@@ -682,6 +682,84 @@ body {
 }
 
 /* Gmail 配置区域 */
+/* 邮箱配置区域 */
+.mail-section {
+  background: #f0f7ff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d6e8ff;
+}
+
+.mail-mode-selector {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #d6e8ff;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+}
+
+.radio-label input[type="radio"] {
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"]:checked + span {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+.mail-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mail-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mail-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.mail-input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.mail-hint {
+  font-size: 10px;
+  color: #666;
+  margin: 0;
+}
+
+.mail-status {
+  font-size: 11px;
+  color: #52c41a;
+  margin: 0;
+  font-weight: 500;
+}
+
+.mail-status.error {
+  color: #f5222d;
+}
+
+/* 保留旧的 Gmail 样式以兼容 */
 .gmail-section {
   background: #f0f7ff;
   padding: 10px 12px;

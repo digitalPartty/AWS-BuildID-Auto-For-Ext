@@ -3,12 +3,29 @@
  * 管理注册状态和流程控制，支持多窗口并发注册
  */
 
-import { GmailAliasClient } from '../lib/mail-api.js';
+import { GmailAliasClient, TempMailClient, CustomMailClient, createMailClient } from '../lib/mail-api.js';
 import { AWSDeviceAuth, validateToken, refreshAndValidateToken } from '../lib/oidc-api.js';
 import { generatePassword, generateName, generateEmailPrefix } from '../lib/utils.js';
 
-// Gmail 配置
-let gmailBaseAddress = '';
+// 邮箱配置
+let mailConfig = {
+  type: 'gmail', // 'gmail' | 'temp' | 'custom'
+  gmail: {
+    baseEmail: ''
+  },
+  tempMail: {
+    workerDomain: '',
+    adminPassword: '',
+    emailDomains: [],
+    emailPrefix: 'test'
+  },
+  custom: {
+    email: ''
+  }
+};
+
+// 临时邮箱域名轮询索引（全局共享）
+let tempMailDomainIndex = 0;
 
 // ============== 全局状态 ==============
 
@@ -241,28 +258,64 @@ async function runSessionRegistration(session) {
     session.lastName = lastName;
     session.password = password;
 
-    // 步骤 2: 生成 Gmail 别名邮箱
-    updateSession(session.id, { step: '生成邮箱别名...' });
-    
-    if (!gmailBaseAddress) {
-      throw new Error('未配置 Gmail 地址，请在插件设置中配置');
+    // 步骤 2: 生成邮箱
+    updateSession(session.id, { step: '生成邮箱...' });
+
+    // 生成邮箱
+    let email;
+    if (mailConfig.type === 'temp') {
+      // 临时邮箱模式：自动创建，使用全局域名索引轮询
+      const domainIndex = tempMailDomainIndex;
+      tempMailDomainIndex++; // 全局索引递增
+
+      const emailDomains = mailConfig.tempMail.emailDomains;
+      const selectedDomain = emailDomains[domainIndex % emailDomains.length];
+
+      console.log(`[Session ${session.id}] 使用域名: ${selectedDomain} (${domainIndex % emailDomains.length + 1}/${emailDomains.length})`);
+
+      // 创建邮箱客户端（每次都创建新实例）
+      session.mailClient = createMailClient(mailConfig);
+
+      // 检查配置
+      if (!session.mailClient.isConfigured()) {
+        throw new Error('未配置邮箱服务，请在插件设置中配置');
+      }
+
+      // 手动设置域名索引，确保使用指定的域名
+      session.mailClient.domainIndex = domainIndex;
+
+      email = await session.mailClient.createInbox();
+      session.manualVerification = false; // 自动获取验证码
+    } else if (mailConfig.type === 'custom') {
+      // 自定义邮箱模式：直接使用配置的邮箱
+      session.mailClient = createMailClient(mailConfig);
+
+      if (!session.mailClient.isConfigured()) {
+        throw new Error('未配置邮箱地址，请在插件设置中配置');
+      }
+
+      email = await session.mailClient.createInbox();
+      session.manualVerification = true; // 需要手动输入验证码
+    } else {
+      // Gmail 别名模式：生成变体
+      session.mailClient = createMailClient(mailConfig);
+
+      if (!session.mailClient.isConfigured()) {
+        throw new Error('未配置邮箱服务，请在插件设置中配置');
+      }
+
+      const nameSuffix = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.slice(0, 8);
+      email = await session.mailClient.createInbox({
+        prefix: nameSuffix,
+        mode: 'auto'
+      });
+      session.manualVerification = true; // 需要手动输入验证码
     }
-    
-    session.mailClient = new GmailAliasClient({ baseEmail: gmailBaseAddress });
 
-    // 自动生成邮箱变体（+号/点号/大小写组合）
-    // 可选后缀包含姓名信息，便于识别
-    const nameSuffix = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.slice(0, 8);
-
-    const email = await session.mailClient.createInbox({
-      prefix: nameSuffix,  // 可选的姓名后缀
-      mode: 'auto'         // 自动轮换变体方式
-    });
     session.email = email;
-    session.manualVerification = true; // 标记需要手动输入验证码
     updateSession(session.id, { email });
 
-    console.log(`[Session ${session.id}] 账号信息:`, { email, firstName, lastName });
+    console.log(`[Session ${session.id}] 账号信息:`, { email, firstName, lastName, mode: mailConfig.type });
 
     // 步骤 3: 获取 OIDC 授权 URL（使用 API 锁）
     updateSession(session.id, { step: '获取授权链接...' });
@@ -607,18 +660,26 @@ async function validateAllTokens() {
 /**
  * 开始批量注册
  */
-async function startBatchRegistration(loopCount, concurrency, gmailAddress) {
+async function startBatchRegistration(loopCount, concurrency, config) {
   if (isRunning) {
     return { success: false, error: '已有注册任务在运行' };
   }
 
-  // 检查 Gmail 配置
-  if (!gmailAddress) {
+  // 更新邮箱配置
+  if (config) {
+    mailConfig = config;
+  }
+
+  // 检查邮箱配置
+  if (mailConfig.type === 'gmail' && !mailConfig.gmail?.baseEmail) {
     return { success: false, error: '未配置 Gmail 地址' };
   }
-  
-  // 设置全局 Gmail 地址
-  gmailBaseAddress = gmailAddress;
+  if (mailConfig.type === 'temp' && (!mailConfig.tempMail?.workerDomain || !mailConfig.tempMail?.adminPassword)) {
+    return { success: false, error: '未配置临时邮箱服务' };
+  }
+  if (mailConfig.type === 'custom' && !mailConfig.custom?.email) {
+    return { success: false, error: '未配置自定义邮箱地址' };
+  }
 
   isRunning = true;
   shouldStop = false;
@@ -638,7 +699,7 @@ async function startBatchRegistration(loopCount, concurrency, gmailAddress) {
   sessions.clear();
   broadcastState();
 
-  console.log(`[Service Worker] 开始批量注册: 目标=${loopCount}, 并发=${concurrency}, Gmail=${gmailAddress}`);
+  console.log(`[Service Worker] 开始批量注册: 目标=${loopCount}, 并发=${concurrency}, 邮箱模式=${mailConfig.type}`);
 
   // 创建任务队列
   taskQueue = [];
@@ -780,20 +841,31 @@ async function getVerificationCode(session) {
     return { success: false, error: '会话未初始化' };
   }
 
-  // Gmail 别名模式下，需要用户手动输入验证码
-  // 返回特殊标记，让 content script 知道需要等待用户输入
-  console.log(`[Session ${session.id}] Gmail 别名模式，等待用户手动输入验证码`);
-  
-  // 如果会话中已经有验证码（用户已输入），则返回
+  // 如果会话中已经有验证码（用户已输入或已获取），则返回
   if (session.verificationCode) {
     return { success: true, code: session.verificationCode };
   }
-  
-  // 返回需要手动输入的标记
-  return { 
-    success: false, 
-    needManualInput: true, 
-    error: '请从 Gmail 收件箱获取验证码并手动填写' 
+
+  // 临时邮箱模式：自动获取验证码
+  if (!session.manualVerification && session.mailClient) {
+    try {
+      console.log(`[Session ${session.id}] 临时邮箱模式，自动获取验证码...`);
+      const code = await session.mailClient.waitForVerificationCode();
+      session.verificationCode = code;
+      console.log(`[Session ${session.id}] 验证码获取成功: ${code}`);
+      return { success: true, code };
+    } catch (error) {
+      console.error(`[Session ${session.id}] 获取验证码失败:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Gmail 别名模式：需要用户手动输入验证码
+  console.log(`[Session ${session.id}] Gmail 别名模式，等待用户手动输入验证码`);
+  return {
+    success: false,
+    needManualInput: true,
+    error: '请从 Gmail 收件箱获取验证码并手动填写'
   };
 }
 
@@ -819,7 +891,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'START_BATCH_REGISTRATION':
-      startBatchRegistration(message.loopCount || 1, message.concurrency || 1, message.gmailAddress)
+      startBatchRegistration(message.loopCount || 1, message.concurrency || 1, message.mailConfig)
         .then(sendResponse);
       return true;
 

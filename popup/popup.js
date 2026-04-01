@@ -37,10 +37,29 @@ const validateBtn = document.getElementById('validate-btn');
 const validateSection = document.getElementById('validate-section');
 const validateText = document.getElementById('validate-text');
 
-// Gmail 配置元素
+// 邮箱配置元素
+const mailModeRadios = document.querySelectorAll('input[name="mail-mode"]');
+const gmailConfig = document.getElementById('gmail-config');
+const tempMailConfig = document.getElementById('temp-mail-config');
+const customMailConfig = document.getElementById('custom-mail-config');
+
+// Gmail 配置
 const gmailAddressInput = document.getElementById('gmail-address');
 const gmailSaveBtn = document.getElementById('gmail-save-btn');
 const gmailStatus = document.getElementById('gmail-status');
+
+// 临时邮箱配置
+const tempWorkerDomainInput = document.getElementById('temp-worker-domain');
+const tempAdminPasswordInput = document.getElementById('temp-admin-password');
+const tempEmailDomainsInput = document.getElementById('temp-email-domains');
+const tempEmailPrefixInput = document.getElementById('temp-email-prefix');
+const tempSaveBtn = document.getElementById('temp-save-btn');
+const tempStatus = document.getElementById('temp-status');
+
+// 自定义邮箱配置
+const customEmailInput = document.getElementById('custom-email');
+const customSaveBtn = document.getElementById('custom-save-btn');
+const customStatus = document.getElementById('custom-status');
 
 // Token Pool 元素
 const poolApiKeyInput = document.getElementById('pool-api-key');
@@ -52,8 +71,22 @@ const poolUserInfo = document.getElementById('pool-user-info');
 const poolUsername = document.getElementById('pool-username');
 const poolPoints = document.getElementById('pool-points');
 
-// Gmail 配置
-let gmailAddress = '';
+// 邮箱配置
+let mailConfig = {
+  type: 'gmail',
+  gmail: {
+    baseEmail: ''
+  },
+  tempMail: {
+    workerDomain: '',
+    adminPassword: '',
+    emailDomains: [],
+    emailPrefix: 'test'
+  },
+  custom: {
+    email: ''
+  }
+};
 
 // Token Pool 配置
 const POOL_API_URL = 'http://localhost:8080';
@@ -398,10 +431,20 @@ async function startRegistration() {
   const loopCount = parseInt(loopCountInput.value) || 1;
   const concurrency = parseInt(concurrencyInput.value) || 1;
 
-  // 检查 Gmail 是否已配置
-  if (!gmailAddress) {
+  // 检查邮箱配置
+  if (mailConfig.type === 'gmail' && !mailConfig.gmail.baseEmail) {
     alert('请先配置 Gmail 地址');
     gmailAddressInput.focus();
+    return;
+  }
+  if (mailConfig.type === 'temp' && (!mailConfig.tempMail.workerDomain || !mailConfig.tempMail.adminPassword)) {
+    alert('请先配置临时邮箱服务');
+    tempWorkerDomainInput.focus();
+    return;
+  }
+  if (mailConfig.type === 'custom' && !mailConfig.custom.email) {
+    alert('请先配置自定义邮箱地址');
+    customEmailInput.focus();
     return;
   }
 
@@ -415,9 +458,9 @@ async function startRegistration() {
     return;
   }
 
-  // Gmail 别名模式建议并发为 1
-  if (concurrency > 1) {
-    const confirm = window.confirm('使用 Gmail 别名模式时，建议并发设为 1（需要手动输入验证码）。\n\n是否继续？');
+  // Gmail 别名或自定义邮箱模式建议并发为 1
+  if ((mailConfig.type === 'gmail' || mailConfig.type === 'custom') && concurrency > 1) {
+    const confirm = window.confirm('使用 Gmail 别名或自定义邮箱模式时，建议并发设为 1（需要手动输入验证码）。\n\n是否继续？');
     if (!confirm) return;
   }
 
@@ -428,7 +471,7 @@ async function startRegistration() {
       type: 'START_BATCH_REGISTRATION',
       loopCount,
       concurrency,
-      gmailAddress  // 传递 Gmail 地址
+      mailConfig  // 传递完整的邮箱配置
     });
     console.log('[Popup] 注册响应:', response);
 
@@ -651,21 +694,92 @@ async function validateAllTokens() {
   }
 }
 
-// ==================== Gmail 配置功能 ====================
+// ==================== 邮箱配置功能 ====================
 
 /**
- * 加载 Gmail 配置
+ * 切换邮箱模式
  */
-async function loadGmailConfig() {
+function switchMailMode(mode) {
+  mailConfig.type = mode;
+
+  if (mode === 'gmail') {
+    gmailConfig.style.display = 'block';
+    tempMailConfig.style.display = 'none';
+    customMailConfig.style.display = 'none';
+  } else if (mode === 'temp') {
+    gmailConfig.style.display = 'none';
+    tempMailConfig.style.display = 'block';
+    customMailConfig.style.display = 'none';
+  } else if (mode === 'custom') {
+    gmailConfig.style.display = 'none';
+    tempMailConfig.style.display = 'none';
+    customMailConfig.style.display = 'block';
+  }
+
+  // 保存模式选择
+  chrome.storage.local.set({ mailMode: mode });
+}
+
+/**
+ * 加载邮箱配置
+ */
+async function loadMailConfig() {
   try {
-    const result = await chrome.storage.local.get(['gmailAddress']);
+    const result = await chrome.storage.local.get([
+      'mailMode',
+      'gmailAddress',
+      'tempWorkerDomain',
+      'tempAdminPassword',
+      'tempEmailDomains',
+      'tempEmailPrefix',
+      'customEmail'
+    ]);
+
+    // 加载模式
+    const mode = result.mailMode || 'gmail';
+    mailConfig.type = mode;
+    document.querySelector(`input[name="mail-mode"][value="${mode}"]`).checked = true;
+    switchMailMode(mode);
+
+    // 加载 Gmail 配置
     if (result.gmailAddress) {
-      gmailAddress = result.gmailAddress;
-      gmailAddressInput.value = gmailAddress;
+      mailConfig.gmail.baseEmail = result.gmailAddress;
+      gmailAddressInput.value = result.gmailAddress;
       updateGmailStatus(true);
     }
+
+    // 加载临时邮箱配置
+    if (result.tempWorkerDomain) {
+      mailConfig.tempMail.workerDomain = result.tempWorkerDomain;
+      tempWorkerDomainInput.value = result.tempWorkerDomain;
+    }
+    if (result.tempAdminPassword) {
+      mailConfig.tempMail.adminPassword = result.tempAdminPassword;
+      tempAdminPasswordInput.value = result.tempAdminPassword;
+    }
+    if (result.tempEmailDomains) {
+      mailConfig.tempMail.emailDomains = result.tempEmailDomains.split(',').map(d => d.trim());
+      tempEmailDomainsInput.value = result.tempEmailDomains;
+    }
+    if (result.tempEmailPrefix) {
+      mailConfig.tempMail.emailPrefix = result.tempEmailPrefix;
+      tempEmailPrefixInput.value = result.tempEmailPrefix;
+    }
+
+    // 更新临时邮箱状态
+    if (mailConfig.tempMail.workerDomain && mailConfig.tempMail.adminPassword) {
+      updateTempMailStatus(true);
+    }
+
+    // 加载自定义邮箱配置
+    if (result.customEmail) {
+      mailConfig.custom.email = result.customEmail;
+      customEmailInput.value = result.customEmail;
+      updateCustomMailStatus(true);
+    }
+
   } catch (error) {
-    console.error('[Gmail] 加载配置错误:', error);
+    console.error('[Mail] 加载配置错误:', error);
   }
 }
 
@@ -674,22 +788,21 @@ async function loadGmailConfig() {
  */
 async function saveGmailConfig() {
   const email = gmailAddressInput.value.trim();
-  
+
   if (!email) {
     gmailStatus.textContent = '请输入邮箱地址';
     gmailStatus.classList.add('error');
     return;
   }
-  
-  // 验证邮箱格式
+
   if (!email.includes('@')) {
     gmailStatus.textContent = '邮箱格式无效';
     gmailStatus.classList.add('error');
     return;
   }
-  
+
   try {
-    gmailAddress = email;
+    mailConfig.gmail.baseEmail = email;
     await chrome.storage.local.set({ gmailAddress: email });
     updateGmailStatus(true);
   } catch (error) {
@@ -700,16 +813,139 @@ async function saveGmailConfig() {
 }
 
 /**
+ * 保存临时邮箱配置
+ */
+async function saveTempMailConfig() {
+  const workerDomain = tempWorkerDomainInput.value.trim();
+  const adminPassword = tempAdminPasswordInput.value.trim();
+  const emailDomainsStr = tempEmailDomainsInput.value.trim();
+  const emailPrefix = tempEmailPrefixInput.value.trim() || 'test';
+
+  if (!workerDomain) {
+    tempStatus.textContent = '请输入 Worker 域名';
+    tempStatus.classList.add('error');
+    return;
+  }
+
+  if (!adminPassword) {
+    tempStatus.textContent = '请输入管理员密码';
+    tempStatus.classList.add('error');
+    return;
+  }
+
+  if (!emailDomainsStr) {
+    tempStatus.textContent = '请输入邮箱域名';
+    tempStatus.classList.add('error');
+    return;
+  }
+
+  const emailDomains = emailDomainsStr.split(',').map(d => d.trim()).filter(d => d);
+  if (emailDomains.length === 0) {
+    tempStatus.textContent = '请输入至少一个邮箱域名';
+    tempStatus.classList.add('error');
+    return;
+  }
+
+  try {
+    mailConfig.tempMail.workerDomain = workerDomain;
+    mailConfig.tempMail.adminPassword = adminPassword;
+    mailConfig.tempMail.emailDomains = emailDomains;
+    mailConfig.tempMail.emailPrefix = emailPrefix;
+
+    await chrome.storage.local.set({
+      tempWorkerDomain: workerDomain,
+      tempAdminPassword: adminPassword,
+      tempEmailDomains: emailDomainsStr,
+      tempEmailPrefix: emailPrefix
+    });
+
+    updateTempMailStatus(true);
+  } catch (error) {
+    console.error('[TempMail] 保存配置错误:', error);
+    tempStatus.textContent = '保存失败: ' + error.message;
+    tempStatus.classList.add('error');
+  }
+}
+
+/**
  * 更新 Gmail 状态显示
  */
 function updateGmailStatus(saved) {
-  if (saved && gmailAddress) {
-    gmailStatus.textContent = `✓ 已配置: ${gmailAddress}`;
+  if (saved && mailConfig.gmail.baseEmail) {
+    gmailStatus.textContent = `✓ 已配置: ${mailConfig.gmail.baseEmail}`;
     gmailStatus.classList.remove('error');
   } else {
     gmailStatus.textContent = '';
     gmailStatus.classList.remove('error');
   }
+}
+
+/**
+ * 更新临时邮箱状态显示
+ */
+function updateTempMailStatus(saved) {
+  if (saved && mailConfig.tempMail.workerDomain) {
+    tempStatus.textContent = `✓ 已配置: ${mailConfig.tempMail.workerDomain}`;
+    tempStatus.classList.remove('error');
+  } else {
+    tempStatus.textContent = '';
+    tempStatus.classList.remove('error');
+  }
+}
+
+/**
+ * 保存自定义邮箱配置
+ */
+async function saveCustomMailConfig() {
+  const email = customEmailInput.value.trim();
+
+  if (!email) {
+    customStatus.textContent = '请输入邮箱地址';
+    customStatus.classList.add('error');
+    return;
+  }
+
+  if (!email.includes('@')) {
+    customStatus.textContent = '邮箱格式无效';
+    customStatus.classList.add('error');
+    return;
+  }
+
+  try {
+    mailConfig.custom.email = email;
+
+    await chrome.storage.local.set({
+      customEmail: email
+    });
+
+    updateCustomMailStatus(true);
+  } catch (error) {
+    console.error('[CustomMail] 保存配置错误:', error);
+    customStatus.textContent = '保存失败: ' + error.message;
+    customStatus.classList.add('error');
+  }
+}
+
+/**
+ * 更新自定义邮箱状态显示
+ */
+function updateCustomMailStatus(saved) {
+  if (saved && mailConfig.custom.email) {
+    customStatus.textContent = `✓ 已配置: ${mailConfig.custom.email}`;
+    customStatus.classList.remove('error');
+  } else {
+    customStatus.textContent = '';
+    customStatus.classList.remove('error');
+  }
+}
+
+// ==================== Gmail 配置功能（已废弃，保留兼容） ====================
+
+/**
+ * 加载 Gmail 配置（已废弃）
+ */
+async function loadGmailConfig() {
+  // 已合并到 loadMailConfig
 }
 
 // ==================== Token Pool 功能 ====================
@@ -900,8 +1136,8 @@ async function init() {
     console.error('[Popup] 获取状态错误:', error);
   }
 
-  // 加载 Gmail 配置
-  await loadGmailConfig();
+  // 加载邮箱配置
+  await loadMailConfig();
 
   // 加载 Token Pool 配置
   await loadPoolConfig();
@@ -922,11 +1158,36 @@ async function init() {
   clearBtn.addEventListener('click', clearHistory);
   validateBtn.addEventListener('click', validateAllTokens);
 
+  // 邮箱模式切换事件
+  mailModeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        switchMailMode(e.target.value);
+      }
+    });
+  });
+
   // Gmail 配置事件
   gmailSaveBtn.addEventListener('click', saveGmailConfig);
   gmailAddressInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       saveGmailConfig();
+    }
+  });
+
+  // 临时邮箱配置事件
+  tempSaveBtn.addEventListener('click', saveTempMailConfig);
+  tempEmailPrefixInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      saveTempMailConfig();
+    }
+  });
+
+  // 自定义邮箱配置事件
+  customSaveBtn.addEventListener('click', saveCustomMailConfig);
+  customEmailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      saveCustomMailConfig();
     }
   });
 
