@@ -39,41 +39,11 @@
     <!-- 邮箱配置区域 -->
     <div id="mail-section" class="section mail-section">
       <div class="section-header">
-        <h2>邮箱配置</h2>
+        <h2>DuckDuckGo + TEmail 配置</h2>
       </div>
 
-      <!-- 邮箱模式选择 -->
-      <div class="mail-mode-selector">
-        <label class="radio-label">
-          <input type="radio" name="mail-mode" value="gmail" checked>
-          <span>Gmail 别名</span>
-        </label>
-        <label class="radio-label">
-          <input type="radio" name="mail-mode" value="duckduckgo">
-          <span>DuckDuckGo</span>
-        </label>
-        <label class="radio-label">
-          <input type="radio" name="mail-mode" value="temp">
-          <span>临时邮箱</span>
-        </label>
-        <label class="radio-label">
-          <input type="radio" name="mail-mode" value="custom">
-          <span>自定义邮箱</span>
-        </label>
-      </div>
-
-      <!-- Gmail 配置 -->
-      <div id="gmail-config" class="mail-config">
-        <div class="mail-input-row">
-          <input type="email" id="gmail-address" placeholder="输入你的 Gmail 地址" class="mail-input">
-          <button id="gmail-save-btn" class="btn-small">保存</button>
-        </div>
-        <p class="mail-hint">自动生成别名变体（+号/点号/大小写），验证码需手动填写</p>
-        <p class="mail-status" id="gmail-status"></p>
-      </div>
-
-      <!-- DuckDuckGo 配置 -->
-      <div id="duckduckgo-config" class="mail-config" style="display: none;">
+      <!-- DuckDuckGo Token -->
+      <div class="mail-config">
         <div class="mail-input-row">
           <input type="text" id="ddg-token" placeholder="DuckDuckGo Token" class="mail-input">
           <button id="ddg-save-btn" class="btn-small">保存</button>
@@ -103,35 +73,6 @@
           </div>
         </details>
       </div>
-
-      <!-- 临时邮箱配置 -->
-      <div id="temp-mail-config" class="mail-config" style="display: none;">
-        <div class="mail-input-row">
-          <input type="text" id="temp-worker-domain" placeholder="Worker 域名 (如: https://mail.example.com)" class="mail-input">
-        </div>
-        <div class="mail-input-row">
-          <input type="password" id="temp-admin-password" placeholder="管理员密码" class="mail-input">
-        </div>
-        <div class="mail-input-row">
-          <input type="text" id="temp-email-domains" placeholder="邮箱域名 (多个用逗号分隔)" class="mail-input">
-        </div>
-        <div class="mail-input-row">
-          <input type="text" id="temp-email-prefix" placeholder="邮箱前缀 (默认: test)" class="mail-input" value="test">
-          <button id="temp-save-btn" class="btn-small">保存</button>
-        </div>
-        <p class="mail-hint">自动创建临时邮箱并获取验证码，支持多窗口并发</p>
-        <p class="mail-status" id="temp-status"></p>
-      </div>
-
-      <!-- 自定义邮箱配置 -->
-      <div id="custom-mail-config" class="mail-config" style="display: none;">
-        <div class="mail-input-row">
-          <input type="email" id="custom-email" placeholder="输入完整邮箱地址 (如: user@example.com)" class="mail-input">
-          <button id="custom-save-btn" class="btn-small">保存</button>
-        </div>
-        <p class="mail-hint">使用固定邮箱地址，验证码需手动填写</p>
-        <p class="mail-status" id="custom-status"></p>
-      </div>
     </div>
 
     <!-- 设置区域 -->
@@ -143,10 +84,10 @@
         </div>
         <div class="setting-item">
           <label>并发窗口</label>
-          <input type="number" id="concurrency" min="1" max="3" value="1" class="setting-input">
+          <input type="number" id="concurrency" min="1" max="5" value="1" class="setting-input">
         </div>
       </div>
-      <p class="settings-hint">⚠️ 使用 Gmail 别名或自定义邮箱模式时，建议并发设为 1</p>
+      <p class="settings-hint">💡 支持多窗口并发，自动获取验证码</p>
     </div>
 
     <!-- 操作按钮区域 -->

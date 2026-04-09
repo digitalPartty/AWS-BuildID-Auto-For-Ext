@@ -1,389 +1,285 @@
-<div align="center">
+# AWS Builder ID 自动注册工具
 
-# 🚀 AWS Auto Registration - Chrome Extension
+一键批量注册 AWS Builder ID 账号的 Chrome 浏览器扩展，使用 DuckDuckGo 邮箱别名 + TEmail 自动获取验证码。
 
-### ⚡ 一键自动化注册 AWS Builder ID 的浏览器扩展
+## ✨ 特性
 
-[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://chrome.google.com)
-[![Manifest V3](https://img.shields.io/badge/Manifest-V3-green?logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/intro/)
-[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?logo=javascript&logoColor=black)](https://www.javascript.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+- 🚀 **全自动注册** - DuckDuckGo 生成别名 + TEmail 自动获取验证码
+- 🔄 **批量并发** - 支持多窗口并发注册（最多 5 个）
+- 📧 **邮件转发** - DuckDuckGo 别名自动转发到 TEmail
+- 🔐 **Token 管理** - 自动获取并保存 Access Token 和 Refresh Token
+- ✅ **Token 验证** - 批量验证 Token 状态（有效/过期/封禁）
+- 📊 **历史记录** - 保存注册历史，支持导出 JSON/CSV
+- 🔗 **Kiro IDE 集成** - 一键同步 Token 到 Kiro IDE
 
-[功能特性](#-功能特性) • [安装指南](#-安装指南) • [使用说明](#-使用说明) • [技术架构](#-技术架构) • [常见问题](#-常见问题)
+## 📋 前置要求
 
-</div>
+### 1. DuckDuckGo Email Protection
 
----
+1. 注册 DuckDuckGo 账号：https://duckduckgo.com/email/
+2. 获取 Token：
+   - 登录 DuckDuckGo Email Protection
+   - 打开浏览器开发者工具（F12）
+   - 切换到 Network 标签
+   - 创建一个新的邮箱别名
+   - 找到请求头中的 `Authorization: Bearer YOUR_TOKEN`
+   - 复制 Token（不包含 "Bearer " 前缀）
 
-> ⚠️ **重要提示**：目前插件的**并发多窗口功能不稳定**，建议将并发窗口数设置为 **1**。使用 Gmail 别名模式时需要手动填写验证码。
+### 2. TEmail 临时邮箱
 
----
+- 部署 TEmail 服务：https://github.com/Jinnrry/PMail
+- 或使用现有的 TEmail 实例
+- 获取认证信息（二选一）：
+  - **JWT Token**（推荐）：从 TEmail 管理面板获取
+  - **Admin 密码**：TEmail 管理员密码
 
-## ✨ 功能特性
+### 3. Chrome 浏览器
 
-### 🎯 核心功能
+- 版本 88 或更高
+- 启用扩展的无痕模式权限
 
-- **🤖 半自动注册** - 自动填写表单，验证码需手动输入
-- **🔄 批量注册** - 支持自定义注册数量（1-100），一键批量创建账号
-- **📧 Gmail 无限别名** - 利用 Gmail 特性生成无限邮箱变体（+号/点号/大小写）
-- **🕵️ 无痕模式** - 自动创建无痕窗口，隔离会话，防止数据污染
-- **🔐 Token 管理** - 自动获取并保存 OIDC Access Token 和 Refresh Token
+## 🚀 快速开始
 
-### 🛡️ 高级功能
+### 1. 安装扩展
 
-- **✅ Token 验证** - 批量验证 Token 状态，识别封禁、过期、无效账号
-- **🎨 状态可视化** - 实时显示注册进度、会话状态、Token 状态
-- **📊 智能导出** - 支持 JSON/CSV 格式，自动过滤无效 Token
-- **💾 历史记录** - 自动保存注册历史，支持查看、复制、导出
-- **🚀 Kiro IDE 同步** - 一键同步 Token 至 Kiro IDE，支持 Windows / macOS / Linux
-
----
-
-## 📧 邮箱模式
-
-本插件支持多种邮箱模式，满足不同使用场景：
-
-### 1. Gmail 无限别名（手动验证码）
-
-利用 Gmail 的特性，从一个 Gmail 地址生成无限邮箱变体：
-
-| 变体类型 | 示例 | 说明 |
-|---------|------|------|
-| **+ 号别名** | `user+abc123@gmail.com` | 最可靠，推荐方式 |
-| **点号插入** | `u.ser@gmail.com` | Gmail 忽略用户名中的点 |
-| **大小写变体** | `UsEr@gmail.com` | Gmail 不区分大小写 |
-| **混合变体** | `U.sEr+abc@gmail.com` | 组合以上所有方式 |
-
-> 所有变体都会收到同一个 Gmail 收件箱的邮件，验证码需手动填写
-
-### 2. DuckDuckGo + TEmail（自动验证码）⭐ 推荐
-
-**最强组合**：DuckDuckGo 生成临时邮箱别名 + TEmail 自动获取验证码
-
-**优势**：
-- ✅ 自动创建 DuckDuckGo 邮箱别名
-- ✅ 邮件自动转发到 TEmail
-- ✅ 自动获取验证码，无需手动填写
-- ✅ 支持多窗口并发注册
-- ✅ 极简时间过滤，稳定可靠
-
-**配置步骤**：
-
-1. **获取 DuckDuckGo Token**：
-   - 访问 [DuckDuckGo Email Protection](https://duckduckgo.com/email/)
-   - 登录并生成 API Token
-
-2. **配置 TEmail**：
-   - 服务器地址：`https://email.chaijz.top`（默认）
-   - 邮箱地址：`dkdkgo@chaijz.top`（默认）
-   - 认证方式（二选一）：
-     - **JWT Token**（推荐）：直接使用邮箱的 JWT Token
-     - **Admin 密码**：通过 Admin API 自动获取 JWT Token
-
-3. **在插件中配置**：
-   - 选择「DuckDuckGo」模式
-   - 输入 DuckDuckGo Token 并保存
-   - 展开「TEmail 自动验证码配置」
-   - 输入 TEmail 配置并保存
-
-**工作原理**：
-```
-1. 创建 DuckDuckGo 别名（如：clumsy-stilt-share@duck.com）
-2. 使用别名注册 AWS Builder ID
-3. AWS 发送验证码到别名
-4. DuckDuckGo 转发邮件到 TEmail（dkdkgo@chaijz.top）
-5. 插件自动从 TEmail 获取验证码
-6. 自动填写验证码完成注册
-```
-
-### 3. 临时邮箱（自动验证码）
-
-使用 Cloudflare Worker 搭建的临时邮箱服务，自动创建邮箱并获取验证码。
-
-### 4. 自定义邮箱（手动验证码）
-
-使用固定的邮箱地址，验证码需手动填写。
-
----
-
-## 📦 安装指南
-
-### 方式一：从源码安装（推荐）
-
-1️⃣ **克隆仓库**
 ```bash
-git clone https://github.com/Specia1z/AWS-BuildID-Auto-For-Ext.git
-cd AWS-BuildID-Auto-For-Ext
+# 克隆仓库
+git clone https://github.com/your-repo/aws-auto-registration.git
+cd aws-auto-registration
+
+# 加载扩展
+# 1. 打开 Chrome 浏览器
+# 2. 访问 chrome://extensions/
+# 3. 开启"开发者模式"
+# 4. 点击"加载已解压的扩展程序"
+# 5. 选择项目文件夹
 ```
 
-2️⃣ **加载扩展**
-- 打开 Chrome 浏览器
-- 访问 `chrome://extensions/`
-- 开启右上角「开发者模式」
-- 点击「加载已解压的扩展程序」
-- 选择项目根目录
+### 2. 启用无痕模式
 
-3️⃣ **启用无痕模式**
-- 在扩展卡片上，点击「详细信息」
-- 找到「在无痕模式下启用」，**必须开启**
-- 刷新扩展（点击刷新图标 🔄）
+1. 在 `chrome://extensions/` 找到扩展
+2. 点击"详细信息"
+3. 开启"在无痕模式下启用"
 
-### 方式二：安装打包文件
+### 3. 配置扩展
 
-1. 下载 [Releases](https://github.com/Specia1z/AWS-BuildID-Auto-For-Ext/releases) 中的 `extension.crx` 或 `extension.zip`
-2. 解压后按照「方式一」的步骤 2-3 加载
+1. 点击扩展图标打开 Popup
+2. 配置 DuckDuckGo Token
+3. 配置 TEmail 自动验证码：
+   - 服务器地址：`https://email.chaijz.top`（或你的 TEmail 地址）
+   - 邮箱地址：`dkdkgo@chaijz.top`（或你的 TEmail 邮箱）
+   - JWT Token 或 Admin 密码
+4. 点击"保存"
 
----
+### 4. 开始注册
 
-## 📖 使用说明
+1. 设置注册数量（1-100）
+2. 设置并发窗口（1-5）
+3. 点击"开始注册"
+4. 等待自动完成
 
-### 快速开始
-
-#### 方式一：DuckDuckGo + TEmail（推荐，自动验证码）
-
-1. **配置 DuckDuckGo**：
-   - 在插件弹窗中选择「DuckDuckGo」模式
-   - 输入 DuckDuckGo Token 并保存
-2. **配置 TEmail**：
-   - 展开「TEmail 自动验证码配置」
-   - 输入 TEmail 服务器地址、邮箱地址、JWT Token 或 Admin 密码
-   - 点击保存
-3. **设置参数**：
-   - 注册数量：1-100
-   - 并发窗口：1-3（支持多窗口并发）
-4. **点击「开始注册」**，全自动完成，无需手动输入验证码
-
-#### 方式二：Gmail 别名（手动验证码）
-
-1. **配置 Gmail 地址**：在插件弹窗中输入你的 Gmail 地址并保存
-2. **设置参数**：
-   - 注册数量：1-100（建议 ≤ 10）
-   - 并发窗口：建议设为 **1**（需要手动输入验证码）
-3. **点击「开始注册」**
-4. **手动填写验证码**：
-   - 打开 Gmail 收件箱，找到 AWS 验证码邮件
-   - 在注册页面手动输入验证码
-5. **等待完成**，查看注册结果
-
-### 功能详解
-
-#### 📧 Gmail 配置
-
-在插件弹窗顶部配置你的 Gmail 地址：
+## 📖 工作原理
 
 ```
-输入: example@gmail.com
-保存后自动生成变体: example+240204abc@gmail.com, e.xample@gmail.com 等
+1. 创建 DuckDuckGo 邮箱别名
+   ↓
+2. 使用别名注册 AWS Builder ID
+   ↓
+3. AWS 发送验证码到别名
+   ↓
+4. DuckDuckGo 转发邮件到 TEmail
+   ↓
+5. 自动从 TEmail 获取验证码
+   ↓
+6. 自动填写验证码完成注册
+   ↓
+7. 获取并保存 Token
 ```
 
-#### ✅ Token 验证
+## 🔧 配置说明
 
-注册完成后，点击「验证」按钮批量检测所有 Token 状态：
+### DuckDuckGo Token
 
-| 状态 | 含义 | 颜色 |
-|------|------|------|
-| **有效** | Token 正常可用 | 🟢 绿色 |
-| **封禁** | 账号被临时封禁 | 🟡 黄色 |
-| **过期** | Token 已过期 | 🟠 橙色 |
-| **无效** | 账号无效或被删除 | 🔴 红色 |
-| **错误** | 网络或服务器错误 | ⚫ 灰色 |
-| **未验证** | 尚未验证 | ⚪ 浅灰 |
+- 从 DuckDuckGo Email Protection 获取
+- 用于创建邮箱别名
+- 每个别名自动转发到你的 TEmail 邮箱
 
-#### 📊 导出账号
+### TEmail 配置
 
-- **JSON 导出**：仅导出有效和未验证的 Token（自动过滤封禁/过期/无效）
-- **CSV 导出**：导出完整信息，包含 `token_status` 列
+- **服务器地址**：TEmail 实例的 URL
+- **邮箱地址**：接收转发邮件的 TEmail 邮箱
+- **认证方式**（二选一）：
+  - JWT Token（推荐，更快）
+  - Admin 密码（自动获取 JWT）
 
-#### 🚀 同步至 Kiro IDE
+## 📊 功能说明
 
-一键将 Token 同步至 Kiro IDE，**智能检测操作系统**，自动生成对应命令。
+### 批量注册
 
-**支持的系统：**
+- 支持 1-100 个账号
+- 支持 1-5 个并发窗口
+- 自动获取验证码
+- 自动填写表单
 
-| 系统 | 终端 | 配置文件路径 |
-|------|------|-------------|
-| Windows | PowerShell | `%USERPROFILE%\.aws\sso\cache\` |
-| macOS | Terminal | `~/.aws/sso/cache/` |
-| Linux | Terminal | `~/.aws/sso/cache/` |
+### Token 验证
 
-**使用步骤：**
+- 批量验证所有 Token 状态
+- 状态类型：
+  - ✅ 有效（valid）
+  - ⏰ 过期（expired）
+  - 🚫 封禁（suspended）
+  - ❌ 无效（invalid）
+  - ❓ 未验证（unknown）
 
-1. 在历史记录中找到成功注册且有 Token 的记录
-2. 点击该记录旁边的 **「Kiro」** 按钮
-3. 插件会自动检测你的操作系统，生成对应的命令并复制到剪贴板
-4. 打开对应的终端（Windows 用 PowerShell，macOS/Linux 用 Terminal）
-5. 粘贴并执行命令
-6. 重启 Kiro IDE 即可使用同步的账号
+### 数据导出
 
----
+- **JSON 格式**：只导出有效的 Token（用于 API 调用）
+- **CSV 格式**：导出完整信息（包含邮箱、密码、Token 状态等）
 
-## 🏗️ 技术架构
+### Kiro IDE 集成
 
-### 技术栈
+- 一键同步 Token 到 Kiro IDE
+- 自动检测操作系统（Windows/macOS/Linux）
+- 生成对应的命令并复制到剪贴板
+- 在终端执行命令即可同步
 
-<div align="center">
+## 🐛 故障排除
 
-| 层级 | 技术 | 说明 |
-|:----:|:----:|:-----|
-| **核心** | ![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4?logo=googlechrome) | Chrome Extension API |
-| **语言** | ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?logo=javascript&logoColor=black) | ES6+ Modules |
-| **UI** | ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white) | 原生 HTML/CSS |
-| **认证** | ![OAuth 2.0](https://img.shields.io/badge/OAuth-2.0-blue?logo=oauth) | AWS OIDC Device Flow |
+### 问题 1: 找不到验证码
 
-</div>
+**症状**：日志显示"超时：未能在规定时间内收到验证码"
 
-### 项目结构
+**解决方案**：
+
+1. 检查 TEmail 配置是否正确
+2. 手动登录 TEmail 查看是否收到邮件
+3. 检查 DuckDuckGo 转发设置
+4. 增加等待时间（默认 60 秒）
+
+### 问题 2: Token 无效
+
+**症状**：验证显示 Token 状态为"无效"或"封禁"
+
+**解决方案**：
+
+1. AWS 可能检测到批量注册
+2. 降低注册速度（减少并发数）
+3. 使用不同的 IP 地址
+4. 等待一段时间后重试
+
+### 问题 3: 无痕窗口创建失败
+
+**症状**：提示"无法创建无痕窗口"
+
+**解决方案**：
+
+1. 在 `chrome://extensions/` 启用"在无痕模式下启用"
+2. 重新加载扩展
+3. 重启浏览器
+
+### 问题 4: DuckDuckGo Token 无效
+
+**症状**：提示"创建别名失败: 401"
+
+**解决方案**：
+
+1. 重新获取 DuckDuckGo Token
+2. 确保复制的是完整的 Token（不包含 "Bearer " 前缀）
+3. 检查 Token 是否过期
+
+### 问题 5: TEmail 认证失败
+
+**症状**：提示"获取 JWT 失败"或"找不到邮箱"
+
+**解决方案**：
+
+1. 检查服务器地址是否正确（不要有尾部斜杠）
+2. 检查邮箱地址是否存在于 TEmail 系统中
+3. 尝试直接使用 JWT Token 而不是 Admin 密码
+4. 手动登录 TEmail 验证邮箱是否可用
+
+## 📝 注意事项
+
+1. **合理使用**：请遵守 AWS 服务条款，不要滥用
+2. **速率限制**：建议并发数不超过 3，避免触发限流
+3. **Token 安全**：妥善保管导出的 Token，不要泄露
+4. **邮箱配置**：确保 DuckDuckGo 转发到正确的 TEmail 邮箱
+5. **定期验证**：定期验证 Token 状态，及时清理无效 Token
+
+## 🔄 更新日志
+
+### v1.1.0 (2024-02-04)
+
+- ✅ 简化项目，只保留 DuckDuckGo + TEmail 方案
+- ✅ 移除 Gmail 别名、临时邮箱、自定义邮箱模式
+- ✅ 优化 UI，简化配置流程
+- ✅ 提升并发窗口最大值到 5
+- ✅ 清理不需要的代码和文档
+
+### v1.0.4 (2024-02-04)
+
+- ✅ 修复时间同步问题（使用邮件 ID 代替时间比较）
+- ✅ 修复 DuckDuckGo 邮箱地址不完整问题
+- ✅ 修复 Service Worker 动态导入错误
+- ✅ 优化验证码提取逻辑（支持 5 种格式）
+- ✅ 添加邮件去重机制
+
+### v1.0.3 (2024-02-03)
+
+- ✅ 添加 DuckDuckGo + TEmail 集成
+- ✅ 支持自动获取验证码
+- ✅ 添加 Token 验证功能
+
+## 📁 项目结构
 
 ```
-extension/
-├── manifest.json              # 扩展配置（Manifest V3）
+aws-auto-registration/
 ├── background/
-│   └── service-worker.js     # 后台服务（会话管理、API 调用）
+│   └── service-worker.js      # 后台服务
 ├── content/
-│   └── content.js            # 内容脚本（页面自动化）
-├── popup/
-│   ├── popup.html            # 弹窗界面
-│   ├── popup.css             # 弹窗样式
-│   └── popup.js              # 弹窗逻辑
+│   └── content.js             # 内容脚本
+├── icons/                     # 图标
 ├── lib/
-│   ├── mail-api.js           # Gmail 无限别名生成器
-│   ├── oidc-api.js           # AWS OIDC 认证 API + Token 验证
-│   └── utils.js              # 工具函数（密码/姓名生成）
-└── icons/
-    ├── icon16.png
-    ├── icon48.png
-    └── icon128.png
+│   ├── duckduckgo-client.js   # DuckDuckGo 客户端
+│   ├── mail-api.js            # 邮箱 API
+│   ├── oidc-api.js            # OIDC API
+│   ├── temail-client.js       # TEmail 客户端
+│   └── utils.js               # 工具函数
+├── popup/
+│   ├── popup.html             # 弹窗 HTML
+│   ├── popup.js               # 弹窗脚本
+│   └── popup.css              # 弹窗样式
+├── manifest.json              # 扩展配置
+├── LICENSE                    # 许可证
+└── README.md                  # 本文档
 ```
 
-### 核心流程
+## 🛠️ 技术栈
 
-```mermaid
-graph TD
-    A[用户点击开始] --> B[创建会话]
-    B --> C[生成 Gmail 别名]
-    C --> D[获取 OIDC 授权链接]
-    D --> E[打开无痕窗口]
-    E --> F[Content Script 自动填表]
-    F --> G[用户手动填写验证码]
-    G --> H[Service Worker 轮询 Token]
-    H --> I{Token 获取成功?}
-    I -->|是| J[保存账号信息]
-    I -->|否| K[记录失败]
-    J --> L[验证 Token 状态]
-    L --> M[导出结果]
-```
+- **前端**：HTML, CSS, JavaScript
+- **Chrome API**：chrome.windows, chrome.tabs, chrome.storage, chrome.runtime
+- **邮箱服务**：DuckDuckGo Email Protection, TEmail (PMail)
+- **认证**：AWS OIDC Device Authorization Flow
 
----
+## 📚 相关链接
 
-## ⚠️ 注意事项
+- DuckDuckGo Email Protection: https://duckduckgo.com/email/
+- TEmail (PMail): https://github.com/Jinnrry/PMail
+- AWS Builder ID: https://aws.amazon.com/builder-id/
+- Chrome Extension API: https://developer.chrome.com/docs/extensions/
 
-- ✅ **必须启用无痕模式权限**，否则无法创建无痕窗口
-- ✅ **推荐使用 DuckDuckGo + TEmail 模式**，自动获取验证码，支持多窗口并发
-- ✅ Gmail 别名模式需要手动填写验证码，建议并发设为 1
-- ⚠️ Token 默认状态为「未验证」，需手动点击「验证」按钮
-- 📱 仅支持 Chrome 浏览器（基于 Manifest V3）
+## 📄 许可证
+
+MIT License
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📧 联系方式
+
+如有问题，请提交 Issue 或联系作者。
 
 ---
 
-## 🐛 常见问题
-
-<details>
-<summary><b>❓ 提示"创建无痕窗口失败"</b></summary>
-
-**原因**：未启用无痕模式权限
-
-**解决方案**：
-1. 访问 `chrome://extensions/`
-2. 找到本扩展，点击「详细信息」
-3. 开启「在无痕模式下启用」
-4. 刷新扩展（点击刷新图标 🔄）
-</details>
-
-<details>
-<summary><b>❓ 提示"未配置 DuckDuckGo 或 TEmail 服务"</b></summary>
-
-**原因**：未在插件中配置 DuckDuckGo Token 或 TEmail
-
-**解决方案**：
-1. 点击插件图标打开弹窗
-2. 选择「DuckDuckGo」模式
-3. 输入 DuckDuckGo Token 并保存
-4. 展开「TEmail 自动验证码配置」
-5. 输入 TEmail 配置（服务器地址、邮箱、JWT Token 或 Admin 密码）
-6. 点击「保存配置」
-</details>
-
-<details>
-<summary><b>❓ 提示"未配置 Gmail 地址"</b></summary>
-
-**原因**：未在插件中配置 Gmail 地址
-
-**解决方案**：
-1. 点击插件图标打开弹窗
-2. 选择「Gmail 别名」模式
-3. 在「邮箱配置」区域输入你的 Gmail 地址
-4. 点击「保存」按钮
-</details>
-
-<details>
-<summary><b>❓ DuckDuckGo 模式收不到验证码</b></summary>
-
-**原因**：TEmail 配置错误或邮件转发未生效
-
-**解决方案**：
-1. 确认 TEmail 服务器地址正确（默认：`https://email.chaijz.top`）
-2. 确认 TEmail 邮箱地址正确（默认：`dkdkgo@chaijz.top`）
-3. 确认 JWT Token 或 Admin 密码正确
-4. 检查 DuckDuckGo 是否已设置邮件转发到 TEmail 邮箱
-5. 查看浏览器控制台日志，确认是否有错误信息
-</details>
-
-<details>
-<summary><b>❓ 收不到验证码邮件</b></summary>
-
-**原因**：Gmail 别名可能被识别为垃圾邮件
-
-**解决方案**：
-1. 检查 Gmail 的「垃圾邮件」文件夹
-2. 检查「所有邮件」确保邮件未被过滤
-3. 确认 Gmail 地址输入正确
-</details>
-
-<details>
-<summary><b>❓ Kiro 同步后 IDE 仍提示未登录</b></summary>
-
-**原因**：配置文件未正确写入或 Kiro 未重启
-
-**解决方案**：
-1. 确认在正确的终端中执行命令（Windows 用 PowerShell，macOS/Linux 用 Terminal）
-2. 检查 `~/.aws/sso/cache/` 目录是否存在配置文件
-3. 完全退出并重启 Kiro IDE
-4. 如果仍有问题，尝试删除旧的配置文件后重新同步
-</details>
-
-<details>
-<summary><b>❓ Windows 执行命令报错</b></summary>
-
-**原因**：可能使用了 CMD 而非 PowerShell
-
-**解决方案**：
-1. 确保使用 **PowerShell** 执行命令（不是 CMD）
-2. 右键点击开始菜单，选择「Windows PowerShell」或「终端」
-3. 粘贴命令并按回车执行
-</details>
-
----
-
-## 📄 License
-
-本项目基于 [MIT License](LICENSE) 开源。
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给一个 Star！**
-
-Made with ❤️ by [Specia1z](https://github.com/Specia1z)
-
-</div>
+**免责声明**：本工具仅供学习和研究使用，请遵守相关服务条款。使用本工具产生的任何后果由使用者自行承担。

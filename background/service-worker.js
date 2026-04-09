@@ -3,25 +3,13 @@
  * 管理注册状态和流程控制，支持多窗口并发注册
  */
 
-import { GmailAliasClient, TempMailClient, CustomMailClient, createMailClient, DuckDuckGoWithTEmailClient } from '../lib/mail-api.js';
+import { DuckDuckGoWithTEmailClient } from '../lib/mail-api.js';
 import { AWSDeviceAuth, validateToken, refreshAndValidateToken } from '../lib/oidc-api.js';
-import { generatePassword, generateName, generateEmailPrefix } from '../lib/utils.js';
+import { generatePassword, generateName } from '../lib/utils.js';
 
-// 邮箱配置
+// DuckDuckGo + TEmail 配置
 let mailConfig = {
-  type: 'gmail', // 'gmail' | 'temp' | 'custom' | 'duckduckgo'
-  gmail: {
-    baseEmail: ''
-  },
-  tempMail: {
-    workerDomain: '',
-    adminPassword: '',
-    emailDomains: [],
-    emailPrefix: 'test'
-  },
-  custom: {
-    email: ''
-  },
+  type: 'duckduckgo', // 固定为 duckduckgo
   duckduckgo: {
     token: ''
   },
@@ -32,9 +20,6 @@ let mailConfig = {
     temailAdminPassword: ''
   }
 };
-
-// 临时邮箱域名轮询索引（全局共享）
-let tempMailDomainIndex = 0;
 
 // ============== 全局状态 ==============
 
@@ -267,74 +252,29 @@ async function runSessionRegistration(session) {
     session.lastName = lastName;
     session.password = password;
 
-    // 步骤 2: 生成邮箱
+    // 步骤 2: 生成邮箱（DuckDuckGo + TEmail）
     updateSession(session.id, { step: '生成邮箱...' });
 
-    // 生成邮箱
-    let email;
-    if (mailConfig.type === 'duckduckgo') {
-      // DuckDuckGo + TEmail 模式：自动创建别名并获取验证码
-      session.mailClient = createMailClient(mailConfig);
+    // 创建 DuckDuckGo + TEmail 客户端
+    session.mailClient = new DuckDuckGoWithTEmailClient({
+      duckToken: mailConfig.duckduckgo.token,
+      temailBaseUrl: mailConfig.duckduckgoTemail.temailBaseUrl,
+      temailEmail: mailConfig.duckduckgoTemail.temailEmail,
+      temailJwt: mailConfig.duckduckgoTemail.temailJwt,
+      temailAdminPassword: mailConfig.duckduckgoTemail.temailAdminPassword
+    });
 
-      if (!session.mailClient.isConfigured()) {
-        throw new Error('未配置 DuckDuckGo 或 TEmail 服务，请在插件设置中配置');
-      }
-
-      email = await session.mailClient.createInbox();
-      session.manualVerification = false; // 自动获取验证码
-    } else if (mailConfig.type === 'temp') {
-      // 临时邮箱模式：自动创建，使用全局域名索引轮询
-      const domainIndex = tempMailDomainIndex;
-      tempMailDomainIndex++; // 全局索引递增
-
-      const emailDomains = mailConfig.tempMail.emailDomains;
-      const selectedDomain = emailDomains[domainIndex % emailDomains.length];
-
-      console.log(`[Session ${session.id}] 使用域名: ${selectedDomain} (${domainIndex % emailDomains.length + 1}/${emailDomains.length})`);
-
-      // 创建邮箱客户端（每次都创建新实例）
-      session.mailClient = createMailClient(mailConfig);
-
-      // 检查配置
-      if (!session.mailClient.isConfigured()) {
-        throw new Error('未配置邮箱服务，请在插件设置中配置');
-      }
-
-      // 手动设置域名索引，确保使用指定的域名
-      session.mailClient.domainIndex = domainIndex;
-
-      email = await session.mailClient.createInbox();
-      session.manualVerification = false; // 自动获取验证码
-    } else if (mailConfig.type === 'custom') {
-      // 自定义邮箱模式：直接使用配置的邮箱
-      session.mailClient = createMailClient(mailConfig);
-
-      if (!session.mailClient.isConfigured()) {
-        throw new Error('未配置邮箱地址，请在插件设置中配置');
-      }
-
-      email = await session.mailClient.createInbox();
-      session.manualVerification = true; // 需要手动输入验证码
-    } else {
-      // Gmail 别名模式：生成变体
-      session.mailClient = createMailClient(mailConfig);
-
-      if (!session.mailClient.isConfigured()) {
-        throw new Error('未配置邮箱服务，请在插件设置中配置');
-      }
-
-      const nameSuffix = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.slice(0, 8);
-      email = await session.mailClient.createInbox({
-        prefix: nameSuffix,
-        mode: 'auto'
-      });
-      session.manualVerification = true; // 需要手动输入验证码
+    if (!session.mailClient.isConfigured()) {
+      throw new Error('未配置 DuckDuckGo 或 TEmail 服务，请在插件设置中配置');
     }
+
+    const email = await session.mailClient.createInbox();
+    session.manualVerification = false; // 自动获取验证码
 
     session.email = email;
     updateSession(session.id, { email });
 
-    console.log(`[Session ${session.id}] 账号信息:`, { email, firstName, lastName, mode: mailConfig.type });
+    console.log(`[Session ${session.id}] 账号信息:`, { email, firstName, lastName });
 
     // 步骤 3: 获取 OIDC 授权 URL（使用 API 锁）
     updateSession(session.id, { step: '获取授权链接...' });
@@ -689,27 +629,16 @@ async function startBatchRegistration(loopCount, concurrency, config) {
     mailConfig = config;
   }
 
-  // 检查邮箱配置
-  if (mailConfig.type === 'gmail' && !mailConfig.gmail?.baseEmail) {
-    return { success: false, error: '未配置 Gmail 地址' };
+  // 检查 DuckDuckGo + TEmail 配置
+  if (!mailConfig.duckduckgo?.token) {
+    return { success: false, error: '未配置 DuckDuckGo Token' };
   }
-  if (mailConfig.type === 'temp' && (!mailConfig.tempMail?.workerDomain || !mailConfig.tempMail?.adminPassword)) {
-    return { success: false, error: '未配置临时邮箱服务' };
-  }
-  if (mailConfig.type === 'custom' && !mailConfig.custom?.email) {
-    return { success: false, error: '未配置自定义邮箱地址' };
-  }
-  if (mailConfig.type === 'duckduckgo') {
-    if (!mailConfig.duckduckgo?.token) {
-      return { success: false, error: '未配置 DuckDuckGo Token' };
-    }
-    // 检查是否配置了 TEmail（自动验证码）
-    const hasTemailConfig = mailConfig.duckduckgoTemail &&
-      mailConfig.duckduckgoTemail.temailEmail &&
-      (mailConfig.duckduckgoTemail.temailJwt || mailConfig.duckduckgoTemail.temailAdminPassword);
-    if (!hasTemailConfig) {
-      return { success: false, error: '未配置 TEmail 自动验证码服务' };
-    }
+  
+  const hasTemailConfig = mailConfig.duckduckgoTemail &&
+    mailConfig.duckduckgoTemail.temailEmail &&
+    (mailConfig.duckduckgoTemail.temailJwt || mailConfig.duckduckgoTemail.temailAdminPassword);
+  if (!hasTemailConfig) {
+    return { success: false, error: '未配置 TEmail 自动验证码服务' };
   }
 
   isRunning = true;
@@ -730,7 +659,7 @@ async function startBatchRegistration(loopCount, concurrency, config) {
   sessions.clear();
   broadcastState();
 
-  console.log(`[Service Worker] 开始批量注册: 目标=${loopCount}, 并发=${concurrency}, 邮箱模式=${mailConfig.type}`);
+  console.log(`[Service Worker] 开始批量注册: 目标=${loopCount}, 并发=${concurrency}`);
 
   // 创建任务队列
   taskQueue = [];
@@ -865,22 +794,22 @@ function findSessionByWindowId(windowId) {
 }
 
 /**
- * 获取验证码（Gmail 别名模式 - 等待用户手动输入）
+ * 获取验证码（DuckDuckGo + TEmail 自动获取）
  */
 async function getVerificationCode(session) {
   if (!session) {
     return { success: false, error: '会话未初始化' };
   }
 
-  // 如果会话中已经有验证码（用户已输入或已获取），则返回
+  // 如果会话中已经有验证码（已获取），则返回
   if (session.verificationCode) {
     return { success: true, code: session.verificationCode };
   }
 
-  // 临时邮箱模式：自动获取验证码
-  if (!session.manualVerification && session.mailClient) {
+  // DuckDuckGo + TEmail 模式：自动获取验证码
+  if (session.mailClient) {
     try {
-      console.log(`[Session ${session.id}] 临时邮箱模式，自动获取验证码...`);
+      console.log(`[Session ${session.id}] 自动获取验证码...`);
       const code = await session.mailClient.waitForVerificationCode();
       session.verificationCode = code;
       console.log(`[Session ${session.id}] 验证码获取成功: ${code}`);
@@ -891,12 +820,9 @@ async function getVerificationCode(session) {
     }
   }
 
-  // Gmail 别名模式：需要用户手动输入验证码
-  console.log(`[Session ${session.id}] Gmail 别名模式，等待用户手动输入验证码`);
   return {
     success: false,
-    needManualInput: true,
-    error: '请从 Gmail 收件箱获取验证码并手动填写'
+    error: '邮箱客户端未初始化'
   };
 }
 
