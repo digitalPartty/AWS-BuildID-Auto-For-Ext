@@ -49,6 +49,10 @@
           <span>Gmail 别名</span>
         </label>
         <label class="radio-label">
+          <input type="radio" name="mail-mode" value="duckduckgo">
+          <span>DuckDuckGo</span>
+        </label>
+        <label class="radio-label">
           <input type="radio" name="mail-mode" value="temp">
           <span>临时邮箱</span>
         </label>
@@ -66,6 +70,38 @@
         </div>
         <p class="mail-hint">自动生成别名变体（+号/点号/大小写），验证码需手动填写</p>
         <p class="mail-status" id="gmail-status"></p>
+      </div>
+
+      <!-- DuckDuckGo 配置 -->
+      <div id="duckduckgo-config" class="mail-config" style="display: none;">
+        <div class="mail-input-row">
+          <input type="text" id="ddg-token" placeholder="DuckDuckGo Token" class="mail-input">
+          <button id="ddg-save-btn" class="btn-small">保存</button>
+        </div>
+        <p class="mail-hint">自动生成邮箱别名，邮件转发到 TEmail</p>
+        <p class="mail-status" id="ddg-status"></p>
+
+        <!-- TEmail 自动验证码配置 -->
+        <details class="temail-config-section" open>
+          <summary>🚀 TEmail 自动验证码配置</summary>
+          <div style="margin-top: 10px;">
+            <div class="mail-input-row">
+              <input type="text" id="temail-base-url" placeholder="TEmail 服务器地址" class="mail-input" value="https://email.chaijz.top">
+            </div>
+            <div class="mail-input-row">
+              <input type="text" id="temail-email" placeholder="TEmail 邮箱地址" class="mail-input" value="dkdkgo@chaijz.top">
+            </div>
+            <div class="mail-input-row">
+              <input type="password" id="temail-jwt" placeholder="JWT Token（推荐）" class="mail-input">
+            </div>
+            <p style="text-align: center; margin: 5px 0; color: #666; font-size: 12px;">或使用 Admin 密码（JWT 优先）</p>
+            <div class="mail-input-row">
+              <input type="password" id="temail-admin-password" placeholder="Admin 密码（可选）" class="mail-input">
+              <button id="temail-save-btn" class="btn-small">保存</button>
+            </div>
+            <p class="mail-hint">配置后可自动获取验证码，无需手动填写</p>
+          </div>
+        </details>
       </div>
 
       <!-- 临时邮箱配置 -->

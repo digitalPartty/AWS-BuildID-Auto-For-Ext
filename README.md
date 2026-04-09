@@ -39,9 +39,13 @@
 
 ---
 
-## 📧 Gmail 无限别名
+## 📧 邮箱模式
 
-本插件利用 Gmail 的特性，从一个 Gmail 地址生成无限邮箱变体：
+本插件支持多种邮箱模式，满足不同使用场景：
+
+### 1. Gmail 无限别名（手动验证码）
+
+利用 Gmail 的特性，从一个 Gmail 地址生成无限邮箱变体：
 
 | 变体类型 | 示例 | 说明 |
 |---------|------|------|
@@ -50,7 +54,55 @@
 | **大小写变体** | `UsEr@gmail.com` | Gmail 不区分大小写 |
 | **混合变体** | `U.sEr+abc@gmail.com` | 组合以上所有方式 |
 
-> 所有变体都会收到同一个 Gmail 收件箱的邮件
+> 所有变体都会收到同一个 Gmail 收件箱的邮件，验证码需手动填写
+
+### 2. DuckDuckGo + TEmail（自动验证码）⭐ 推荐
+
+**最强组合**：DuckDuckGo 生成临时邮箱别名 + TEmail 自动获取验证码
+
+**优势**：
+- ✅ 自动创建 DuckDuckGo 邮箱别名
+- ✅ 邮件自动转发到 TEmail
+- ✅ 自动获取验证码，无需手动填写
+- ✅ 支持多窗口并发注册
+- ✅ 极简时间过滤，稳定可靠
+
+**配置步骤**：
+
+1. **获取 DuckDuckGo Token**：
+   - 访问 [DuckDuckGo Email Protection](https://duckduckgo.com/email/)
+   - 登录并生成 API Token
+
+2. **配置 TEmail**：
+   - 服务器地址：`https://email.chaijz.top`（默认）
+   - 邮箱地址：`dkdkgo@chaijz.top`（默认）
+   - 认证方式（二选一）：
+     - **JWT Token**（推荐）：直接使用邮箱的 JWT Token
+     - **Admin 密码**：通过 Admin API 自动获取 JWT Token
+
+3. **在插件中配置**：
+   - 选择「DuckDuckGo」模式
+   - 输入 DuckDuckGo Token 并保存
+   - 展开「TEmail 自动验证码配置」
+   - 输入 TEmail 配置并保存
+
+**工作原理**：
+```
+1. 创建 DuckDuckGo 别名（如：clumsy-stilt-share@duck.com）
+2. 使用别名注册 AWS Builder ID
+3. AWS 发送验证码到别名
+4. DuckDuckGo 转发邮件到 TEmail（dkdkgo@chaijz.top）
+5. 插件自动从 TEmail 获取验证码
+6. 自动填写验证码完成注册
+```
+
+### 3. 临时邮箱（自动验证码）
+
+使用 Cloudflare Worker 搭建的临时邮箱服务，自动创建邮箱并获取验证码。
+
+### 4. 自定义邮箱（手动验证码）
+
+使用固定的邮箱地址，验证码需手动填写。
 
 ---
 
@@ -86,6 +138,22 @@ cd AWS-BuildID-Auto-For-Ext
 ## 📖 使用说明
 
 ### 快速开始
+
+#### 方式一：DuckDuckGo + TEmail（推荐，自动验证码）
+
+1. **配置 DuckDuckGo**：
+   - 在插件弹窗中选择「DuckDuckGo」模式
+   - 输入 DuckDuckGo Token 并保存
+2. **配置 TEmail**：
+   - 展开「TEmail 自动验证码配置」
+   - 输入 TEmail 服务器地址、邮箱地址、JWT Token 或 Admin 密码
+   - 点击保存
+3. **设置参数**：
+   - 注册数量：1-100
+   - 并发窗口：1-3（支持多窗口并发）
+4. **点击「开始注册」**，全自动完成，无需手动输入验证码
+
+#### 方式二：Gmail 别名（手动验证码）
 
 1. **配置 Gmail 地址**：在插件弹窗中输入你的 Gmail 地址并保存
 2. **设置参数**：
@@ -210,9 +278,8 @@ graph TD
 ## ⚠️ 注意事项
 
 - ✅ **必须启用无痕模式权限**，否则无法创建无痕窗口
-- ✅ **必须配置 Gmail 地址**，用于生成邮箱别名
-- ⚠️ 验证码需要从 Gmail 收件箱手动获取并填写
-- ⚠️ 建议并发窗口设为 1，方便手动输入验证码
+- ✅ **推荐使用 DuckDuckGo + TEmail 模式**，自动获取验证码，支持多窗口并发
+- ✅ Gmail 别名模式需要手动填写验证码，建议并发设为 1
 - ⚠️ Token 默认状态为「未验证」，需手动点击「验证」按钮
 - 📱 仅支持 Chrome 浏览器（基于 Manifest V3）
 
@@ -233,14 +300,42 @@ graph TD
 </details>
 
 <details>
+<summary><b>❓ 提示"未配置 DuckDuckGo 或 TEmail 服务"</b></summary>
+
+**原因**：未在插件中配置 DuckDuckGo Token 或 TEmail
+
+**解决方案**：
+1. 点击插件图标打开弹窗
+2. 选择「DuckDuckGo」模式
+3. 输入 DuckDuckGo Token 并保存
+4. 展开「TEmail 自动验证码配置」
+5. 输入 TEmail 配置（服务器地址、邮箱、JWT Token 或 Admin 密码）
+6. 点击「保存配置」
+</details>
+
+<details>
 <summary><b>❓ 提示"未配置 Gmail 地址"</b></summary>
 
 **原因**：未在插件中配置 Gmail 地址
 
 **解决方案**：
 1. 点击插件图标打开弹窗
-2. 在「邮箱配置」区域输入你的 Gmail 地址
-3. 点击「保存」按钮
+2. 选择「Gmail 别名」模式
+3. 在「邮箱配置」区域输入你的 Gmail 地址
+4. 点击「保存」按钮
+</details>
+
+<details>
+<summary><b>❓ DuckDuckGo 模式收不到验证码</b></summary>
+
+**原因**：TEmail 配置错误或邮件转发未生效
+
+**解决方案**：
+1. 确认 TEmail 服务器地址正确（默认：`https://email.chaijz.top`）
+2. 确认 TEmail 邮箱地址正确（默认：`dkdkgo@chaijz.top`）
+3. 确认 JWT Token 或 Admin 密码正确
+4. 检查 DuckDuckGo 是否已设置邮件转发到 TEmail 邮箱
+5. 查看浏览器控制台日志，确认是否有错误信息
 </details>
 
 <details>

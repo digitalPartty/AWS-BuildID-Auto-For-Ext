@@ -40,6 +40,7 @@ const validateText = document.getElementById('validate-text');
 // 邮箱配置元素
 const mailModeRadios = document.querySelectorAll('input[name="mail-mode"]');
 const gmailConfig = document.getElementById('gmail-config');
+const duckduckgoConfig = document.getElementById('duckduckgo-config');
 const tempMailConfig = document.getElementById('temp-mail-config');
 const customMailConfig = document.getElementById('custom-mail-config');
 
@@ -47,6 +48,18 @@ const customMailConfig = document.getElementById('custom-mail-config');
 const gmailAddressInput = document.getElementById('gmail-address');
 const gmailSaveBtn = document.getElementById('gmail-save-btn');
 const gmailStatus = document.getElementById('gmail-status');
+
+// DuckDuckGo 配置
+const ddgTokenInput = document.getElementById('ddg-token');
+const ddgSaveBtn = document.getElementById('ddg-save-btn');
+const ddgStatus = document.getElementById('ddg-status');
+
+// TEmail 配置
+const temailBaseUrlInput = document.getElementById('temail-base-url');
+const temailEmailInput = document.getElementById('temail-email');
+const temailJwtInput = document.getElementById('temail-jwt');
+const temailAdminPasswordInput = document.getElementById('temail-admin-password');
+const temailSaveBtn = document.getElementById('temail-save-btn');
 
 // 临时邮箱配置
 const tempWorkerDomainInput = document.getElementById('temp-worker-domain');
@@ -76,6 +89,15 @@ let mailConfig = {
   type: 'gmail',
   gmail: {
     baseEmail: ''
+  },
+  duckduckgo: {
+    token: ''
+  },
+  duckduckgoTemail: {
+    temailBaseUrl: 'https://email.chaijz.top',
+    temailEmail: 'dkdkgo@chaijz.top',
+    temailJwt: '',
+    temailAdminPassword: ''
   },
   tempMail: {
     workerDomain: '',
@@ -437,6 +459,20 @@ async function startRegistration() {
     gmailAddressInput.focus();
     return;
   }
+  if (mailConfig.type === 'duckduckgo') {
+    if (!mailConfig.duckduckgo.token) {
+      alert('请先配置 DuckDuckGo Token');
+      ddgTokenInput.focus();
+      return;
+    }
+    const hasTemail = mailConfig.duckduckgoTemail.temailEmail &&
+      (mailConfig.duckduckgoTemail.temailJwt || mailConfig.duckduckgoTemail.temailAdminPassword);
+    if (!hasTemail) {
+      alert('请先配置 TEmail 自动验证码服务');
+      temailEmailInput.focus();
+      return;
+    }
+  }
   if (mailConfig.type === 'temp' && (!mailConfig.tempMail.workerDomain || !mailConfig.tempMail.adminPassword)) {
     alert('请先配置临时邮箱服务');
     tempWorkerDomainInput.focus();
@@ -704,14 +740,22 @@ function switchMailMode(mode) {
 
   if (mode === 'gmail') {
     gmailConfig.style.display = 'block';
+    duckduckgoConfig.style.display = 'none';
+    tempMailConfig.style.display = 'none';
+    customMailConfig.style.display = 'none';
+  } else if (mode === 'duckduckgo') {
+    gmailConfig.style.display = 'none';
+    duckduckgoConfig.style.display = 'block';
     tempMailConfig.style.display = 'none';
     customMailConfig.style.display = 'none';
   } else if (mode === 'temp') {
     gmailConfig.style.display = 'none';
+    duckduckgoConfig.style.display = 'none';
     tempMailConfig.style.display = 'block';
     customMailConfig.style.display = 'none';
   } else if (mode === 'custom') {
     gmailConfig.style.display = 'none';
+    duckduckgoConfig.style.display = 'none';
     tempMailConfig.style.display = 'none';
     customMailConfig.style.display = 'block';
   }
@@ -728,6 +772,11 @@ async function loadMailConfig() {
     const result = await chrome.storage.local.get([
       'mailMode',
       'gmailAddress',
+      'ddgToken',
+      'temailBaseUrl',
+      'temailEmail',
+      'temailJwt',
+      'temailAdminPassword',
       'tempWorkerDomain',
       'tempAdminPassword',
       'tempEmailDomains',
@@ -746,6 +795,31 @@ async function loadMailConfig() {
       mailConfig.gmail.baseEmail = result.gmailAddress;
       gmailAddressInput.value = result.gmailAddress;
       updateGmailStatus(true);
+    }
+
+    // 加载 DuckDuckGo 配置
+    if (result.ddgToken) {
+      mailConfig.duckduckgo.token = result.ddgToken;
+      ddgTokenInput.value = result.ddgToken;
+      updateDdgStatus(true);
+    }
+
+    // 加载 TEmail 配置
+    if (result.temailBaseUrl) {
+      mailConfig.duckduckgoTemail.temailBaseUrl = result.temailBaseUrl;
+      temailBaseUrlInput.value = result.temailBaseUrl;
+    }
+    if (result.temailEmail) {
+      mailConfig.duckduckgoTemail.temailEmail = result.temailEmail;
+      temailEmailInput.value = result.temailEmail;
+    }
+    if (result.temailJwt) {
+      mailConfig.duckduckgoTemail.temailJwt = result.temailJwt;
+      temailJwtInput.value = result.temailJwt;
+    }
+    if (result.temailAdminPassword) {
+      mailConfig.duckduckgoTemail.temailAdminPassword = result.temailAdminPassword;
+      temailAdminPasswordInput.value = result.temailAdminPassword;
     }
 
     // 加载临时邮箱配置
@@ -809,6 +883,75 @@ async function saveGmailConfig() {
     console.error('[Gmail] 保存配置错误:', error);
     gmailStatus.textContent = '保存失败: ' + error.message;
     gmailStatus.classList.add('error');
+  }
+}
+
+/**
+ * 保存 DuckDuckGo 配置
+ */
+async function saveDdgConfig() {
+  const token = ddgTokenInput.value.trim();
+
+  if (!token) {
+    ddgStatus.textContent = '请输入 DuckDuckGo Token';
+    ddgStatus.classList.add('error');
+    return;
+  }
+
+  try {
+    mailConfig.duckduckgo.token = token;
+    await chrome.storage.local.set({ ddgToken: token });
+    updateDdgStatus(true);
+  } catch (error) {
+    console.error('[DuckDuckGo] 保存配置错误:', error);
+    ddgStatus.textContent = '保存失败: ' + error.message;
+    ddgStatus.classList.add('error');
+  }
+}
+
+/**
+ * 保存 TEmail 配置
+ */
+async function saveTEmailConfig() {
+  const baseUrl = temailBaseUrlInput.value.trim();
+  const email = temailEmailInput.value.trim();
+  const jwt = temailJwtInput.value.trim();
+  const adminPassword = temailAdminPasswordInput.value.trim();
+
+  if (!baseUrl) {
+    alert('请输入 TEmail 服务器地址');
+    return;
+  }
+
+  if (!email) {
+    alert('请输入 TEmail 邮箱地址');
+    return;
+  }
+
+  if (!jwt && !adminPassword) {
+    alert('请输入 JWT Token 或 Admin 密码');
+    return;
+  }
+
+  try {
+    mailConfig.duckduckgoTemail.temailBaseUrl = baseUrl;
+    mailConfig.duckduckgoTemail.temailEmail = email;
+    mailConfig.duckduckgoTemail.temailJwt = jwt;
+    mailConfig.duckduckgoTemail.temailAdminPassword = adminPassword;
+
+    await chrome.storage.local.set({
+      temailBaseUrl: baseUrl,
+      temailEmail: email,
+      temailJwt: jwt,
+      temailAdminPassword: adminPassword
+    });
+
+    // 更新 DuckDuckGo 状态显示（包含 TEmail 配置）
+    updateDdgStatus(true);
+    alert('TEmail 配置已保存');
+  } catch (error) {
+    console.error('[TEmail] 保存配置错误:', error);
+    alert('保存失败: ' + error.message);
   }
 }
 
@@ -877,6 +1020,26 @@ function updateGmailStatus(saved) {
   } else {
     gmailStatus.textContent = '';
     gmailStatus.classList.remove('error');
+  }
+}
+
+/**
+ * 更新 DuckDuckGo 状态显示
+ */
+function updateDdgStatus(saved) {
+  if (saved && mailConfig.duckduckgo.token) {
+    const hasTemail = mailConfig.duckduckgoTemail.temailEmail &&
+      (mailConfig.duckduckgoTemail.temailJwt || mailConfig.duckduckgoTemail.temailAdminPassword);
+    
+    if (hasTemail) {
+      ddgStatus.textContent = `✓ 已配置 DuckDuckGo + TEmail 自动验证码`;
+    } else {
+      ddgStatus.textContent = `✓ 已配置 DuckDuckGo Token（需配置 TEmail）`;
+    }
+    ddgStatus.classList.remove('error');
+  } else {
+    ddgStatus.textContent = '';
+    ddgStatus.classList.remove('error');
   }
 }
 
@@ -1174,6 +1337,17 @@ async function init() {
       saveGmailConfig();
     }
   });
+
+  // DuckDuckGo 配置事件
+  ddgSaveBtn.addEventListener('click', saveDdgConfig);
+  ddgTokenInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      saveDdgConfig();
+    }
+  });
+
+  // TEmail 配置事件
+  temailSaveBtn.addEventListener('click', saveTEmailConfig);
 
   // 临时邮箱配置事件
   tempSaveBtn.addEventListener('click', saveTempMailConfig);

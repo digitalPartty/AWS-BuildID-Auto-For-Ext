@@ -3,13 +3,13 @@
  * 管理注册状态和流程控制，支持多窗口并发注册
  */
 
-import { GmailAliasClient, TempMailClient, CustomMailClient, createMailClient } from '../lib/mail-api.js';
+import { GmailAliasClient, TempMailClient, CustomMailClient, createMailClient, DuckDuckGoWithTEmailClient } from '../lib/mail-api.js';
 import { AWSDeviceAuth, validateToken, refreshAndValidateToken } from '../lib/oidc-api.js';
 import { generatePassword, generateName, generateEmailPrefix } from '../lib/utils.js';
 
 // 邮箱配置
 let mailConfig = {
-  type: 'gmail', // 'gmail' | 'temp' | 'custom'
+  type: 'gmail', // 'gmail' | 'temp' | 'custom' | 'duckduckgo'
   gmail: {
     baseEmail: ''
   },
@@ -21,6 +21,15 @@ let mailConfig = {
   },
   custom: {
     email: ''
+  },
+  duckduckgo: {
+    token: ''
+  },
+  duckduckgoTemail: {
+    temailBaseUrl: 'https://email.chaijz.top',
+    temailEmail: 'dkdkgo@chaijz.top',
+    temailJwt: '',
+    temailAdminPassword: ''
   }
 };
 
@@ -263,7 +272,17 @@ async function runSessionRegistration(session) {
 
     // 生成邮箱
     let email;
-    if (mailConfig.type === 'temp') {
+    if (mailConfig.type === 'duckduckgo') {
+      // DuckDuckGo + TEmail 模式：自动创建别名并获取验证码
+      session.mailClient = createMailClient(mailConfig);
+
+      if (!session.mailClient.isConfigured()) {
+        throw new Error('未配置 DuckDuckGo 或 TEmail 服务，请在插件设置中配置');
+      }
+
+      email = await session.mailClient.createInbox();
+      session.manualVerification = false; // 自动获取验证码
+    } else if (mailConfig.type === 'temp') {
       // 临时邮箱模式：自动创建，使用全局域名索引轮询
       const domainIndex = tempMailDomainIndex;
       tempMailDomainIndex++; // 全局索引递增
@@ -679,6 +698,18 @@ async function startBatchRegistration(loopCount, concurrency, config) {
   }
   if (mailConfig.type === 'custom' && !mailConfig.custom?.email) {
     return { success: false, error: '未配置自定义邮箱地址' };
+  }
+  if (mailConfig.type === 'duckduckgo') {
+    if (!mailConfig.duckduckgo?.token) {
+      return { success: false, error: '未配置 DuckDuckGo Token' };
+    }
+    // 检查是否配置了 TEmail（自动验证码）
+    const hasTemailConfig = mailConfig.duckduckgoTemail &&
+      mailConfig.duckduckgoTemail.temailEmail &&
+      (mailConfig.duckduckgoTemail.temailJwt || mailConfig.duckduckgoTemail.temailAdminPassword);
+    if (!hasTemailConfig) {
+      return { success: false, error: '未配置 TEmail 自动验证码服务' };
+    }
   }
 
   isRunning = true;

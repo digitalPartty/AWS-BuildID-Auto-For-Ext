@@ -759,6 +759,43 @@ body {
   color: #f5222d;
 }
 
+/* TEmail 配置区域 */
+.temail-config-section {
+  margin-top: 10px;
+  border: 1px solid #e6f7ff;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.temail-config-section summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1890ff;
+  user-select: none;
+  list-style: none;
+}
+
+.temail-config-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.temail-config-section summary::before {
+  content: '▶';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.2s;
+}
+
+.temail-config-section[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.temail-config-section > div {
+  padding: 0 12px 12px 12px;
+}
+
 /* 保留旧的 Gmail 样式以兼容 */
 .gmail-section {
   background: #f0f7ff;
