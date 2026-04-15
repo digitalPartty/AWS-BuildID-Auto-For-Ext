@@ -450,7 +450,7 @@ async function pollSessionToken(session) {
 /**
  * 保存注册结果到历史
  */
-function saveToHistory(session, success) {
+async function saveToHistory(session, success) {
   let tokenInfo = null;
   if (success && session.token) {
     tokenInfo = {
@@ -482,6 +482,57 @@ function saveToHistory(session, success) {
 
   // 保存到 storage
   chrome.storage.local.set({ registrationHistory });
+
+  // 如果注册成功且启用了自动上传，则上传到 Kirors
+  if (success && tokenInfo) {
+    await autoUploadToKirors(record);
+  }
+}
+
+/**
+ * 自动上传到 Kirors
+ */
+async function autoUploadToKirors(record) {
+  try {
+    // 获取配置
+    const config = await chrome.storage.local.get(['poolApiUrl', 'poolApiKey', 'poolAutoUpload']);
+    
+    if (!config.poolAutoUpload || !config.poolApiUrl || !config.poolApiKey) {
+      console.log('[Kirors] 自动上传未启用或未配置');
+      return;
+    }
+
+    console.log('[Kirors] 开始自动上传...');
+
+    const payload = {
+      refreshToken: record.token.refreshToken,
+      authMethod: "idc",
+      clientId: record.token.clientId,
+      clientSecret: record.token.clientSecret,
+      priority: 0
+    };
+
+    const response = await fetch(config.poolApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.poolApiKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Kirors] 上传失败:', response.status, errorText);
+      return;
+    }
+
+    const result = await response.json();
+    console.log('[Kirors] 上传成功:', result);
+
+  } catch (error) {
+    console.error('[Kirors] 自动上传错误:', error);
+  }
 }
 
 /**

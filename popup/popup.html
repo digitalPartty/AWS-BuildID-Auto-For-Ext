@@ -154,27 +154,29 @@
       </div>
     </div>
 
-    <!-- Token Pool 集成 -->
+    <!-- Kirors 集成 -->
     <div id="token-pool-section" class="section">
       <div class="section-header">
-        <h2>Token Pool</h2>
+        <h2>Kirors 集成</h2>
         <div class="section-actions">
-          <button id="pool-upload-btn" class="btn-small btn-small-primary" style="display: none;" title="上传有效 Token 至 Pool">上传</button>
+          <button id="pool-upload-btn" class="btn-small btn-small-primary" title="手动上传有效 Token 至 Kirors">上传至 Kirors</button>
         </div>
       </div>
-      <div id="pool-config" class="pool-config">
-        <div class="pool-input-row">
-          <input type="text" id="pool-api-key" placeholder="输入 API Key" class="pool-input">
-          <button id="pool-connect-btn" class="btn-small">连接</button>
+      <div class="pool-config">
+        <div class="mail-input-row">
+          <input type="text" id="pool-api-url" placeholder="API 地址" class="mail-input" value="https://chairs.zeabur.app/api/admin/credentials">
         </div>
-        <p class="pool-hint">在 Token Pool 网站生成 API Key</p>
-      </div>
-      <div id="pool-user-info" class="pool-user-info" style="display: none;">
-        <div class="pool-user-row">
-          <span class="pool-user-name" id="pool-username">-</span>
-          <span class="pool-user-points" id="pool-points">0 积分</span>
-          <button id="pool-disconnect-btn" class="btn-small btn-small-danger">断开</button>
+        <div class="mail-input-row">
+          <input type="password" id="pool-api-key" placeholder="Token" class="mail-input">
+          <button id="pool-save-btn" class="btn-small">保存</button>
         </div>
+        <div class="pool-auto-upload">
+          <label>
+            <input type="checkbox" id="pool-auto-upload">
+            <span>注册成功后自动上传</span>
+          </label>
+        </div>
+        <p class="mail-status" id="pool-status"></p>
       </div>
     </div>
 

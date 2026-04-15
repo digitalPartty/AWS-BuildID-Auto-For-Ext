@@ -50,14 +50,12 @@ const temailAdminPasswordInput = document.getElementById('temail-admin-password'
 const temailSaveBtn = document.getElementById('temail-save-btn');
 
 // Token Pool 元素
+const poolApiUrlInput = document.getElementById('pool-api-url');
 const poolApiKeyInput = document.getElementById('pool-api-key');
-const poolConnectBtn = document.getElementById('pool-connect-btn');
-const poolDisconnectBtn = document.getElementById('pool-disconnect-btn');
+const poolSaveBtn = document.getElementById('pool-save-btn');
 const poolUploadBtn = document.getElementById('pool-upload-btn');
-const poolConfig = document.getElementById('pool-config');
-const poolUserInfo = document.getElementById('pool-user-info');
-const poolUsername = document.getElementById('pool-username');
-const poolPoints = document.getElementById('pool-points');
+const poolStatus = document.getElementById('pool-status');
+const poolAutoUploadCheckbox = document.getElementById('pool-auto-upload');
 
 // DuckDuckGo + TEmail 配置
 let mailConfig = {
@@ -74,9 +72,11 @@ let mailConfig = {
 };
 
 // Token Pool 配置
-const POOL_API_URL = 'http://localhost:8080';
-let poolApiKey = '';
-let poolUser = null;
+let poolConfig = {
+  apiUrl: 'https://chairs.zeabur.app/api/admin/credentials',
+  apiKey: '',
+  autoUpload: false
+};
 
 /**
  * 更新 UI 状态
@@ -812,96 +812,126 @@ function updateDdgStatus(saved) {
  */
 async function loadPoolConfig() {
   try {
-    const result = await chrome.storage.local.get(['poolApiKey']);
-    if (result.poolApiKey) {
-      poolApiKey = result.poolApiKey;
-      poolApiKeyInput.value = poolApiKey;
-      await connectToPool();
+    const result = await chrome.storage.local.get(['poolApiUrl', 'poolApiKey', 'poolAutoUpload']);
+    if (result.poolApiUrl) {
+      poolConfig.apiUrl = result.poolApiUrl;
+      poolApiUrlInput.value = result.poolApiUrl;
     }
+    if (result.poolApiKey) {
+      poolConfig.apiKey = result.poolApiKey;
+      poolApiKeyInput.value = result.poolApiKey;
+    }
+    if (result.poolAutoUpload !== undefined) {
+      poolConfig.autoUpload = result.poolAutoUpload;
+      poolAutoUploadCheckbox.checked = result.poolAutoUpload;
+    }
+    updatePoolStatus();
   } catch (error) {
     console.error('[Pool] 加载配置错误:', error);
   }
 }
 
 /**
- * 连接到 Token Pool
+ * 保存 Token Pool 配置
  */
-async function connectToPool() {
+async function savePoolConfig() {
+  const apiUrl = poolApiUrlInput.value.trim();
   const apiKey = poolApiKeyInput.value.trim();
-  if (!apiKey) {
-    alert('请输入 API Key');
+  const autoUpload = poolAutoUploadCheckbox.checked;
+
+  if (!apiUrl) {
+    alert('请输入 API 地址');
     return;
   }
 
-  poolConnectBtn.disabled = true;
-  poolConnectBtn.textContent = '连接中...';
+  if (!apiKey) {
+    alert('请输入 Token');
+    return;
+  }
 
   try {
-    const response = await fetch(`${POOL_API_URL}/api/cli/profile`, {
-      method: 'GET',
+    poolConfig.apiUrl = apiUrl;
+    poolConfig.apiKey = apiKey;
+    poolConfig.autoUpload = autoUpload;
+
+    await chrome.storage.local.set({
+      poolApiUrl: apiUrl,
+      poolApiKey: apiKey,
+      poolAutoUpload: autoUpload
+    });
+
+    updatePoolStatus();
+    alert('配置已保存');
+  } catch (error) {
+    console.error('[Pool] 保存配置错误:', error);
+    alert('保存失败: ' + error.message);
+  }
+}
+
+/**
+ * 更新 Token Pool 状态显示
+ */
+function updatePoolStatus() {
+  if (poolConfig.apiKey) {
+    const autoText = poolConfig.autoUpload ? '（自动上传已启用）' : '';
+    poolStatus.textContent = `✓ 已配置 ${autoText}`;
+    poolStatus.classList.remove('error');
+  } else {
+    poolStatus.textContent = '';
+    poolStatus.classList.remove('error');
+  }
+}
+
+/**
+ * 上传单个 Token 到 Kirors
+ */
+async function uploadTokenToKirors(record) {
+  if (!poolConfig.apiUrl || !poolConfig.apiKey) {
+    console.log('[Pool] 未配置 Kirors，跳过上传');
+    return { success: false, error: '未配置 Kirors' };
+  }
+
+  try {
+    const payload = {
+      refreshToken: record.token.refreshToken,
+      authMethod: "idc",
+      clientId: record.token.clientId,
+      clientSecret: record.token.clientSecret,
+      priority: 0
+    };
+
+    console.log('[Pool] 上传到 Kirors:', payload);
+
+    const response = await fetch(poolConfig.apiUrl, {
+      method: 'POST',
       headers: {
-        'X-API-Key': apiKey
-      }
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${poolConfig.apiKey}`
+      },
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || '连接失败');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    const user = await response.json();
-    poolApiKey = apiKey;
-    poolUser = user;
-
-    // 保存到 storage
-    await chrome.storage.local.set({ poolApiKey: apiKey });
-
-    // 更新 UI
-    updatePoolUI();
+    const result = await response.json();
+    console.log('[Pool] 上传成功:', result);
+    return { success: true, result };
 
   } catch (error) {
-    console.error('[Pool] 连接错误:', error);
-    alert('连接失败: ' + error.message);
-  } finally {
-    poolConnectBtn.disabled = false;
-    poolConnectBtn.textContent = '连接';
+    console.error('[Pool] 上传失败:', error);
+    return { success: false, error: error.message };
   }
 }
 
 /**
- * 断开 Token Pool 连接
- */
-async function disconnectFromPool() {
-  poolApiKey = '';
-  poolUser = null;
-  await chrome.storage.local.remove(['poolApiKey']);
-  poolApiKeyInput.value = '';
-  updatePoolUI();
-}
-
-/**
- * 更新 Token Pool UI
- */
-function updatePoolUI() {
-  if (poolUser) {
-    poolConfig.style.display = 'none';
-    poolUserInfo.style.display = 'flex';
-    poolUsername.textContent = poolUser.username || poolUser.email;
-    poolPoints.textContent = `${poolUser.points} 积分`;
-    poolUploadBtn.style.display = 'inline-flex';
-  } else {
-    poolConfig.style.display = 'block';
-    poolUserInfo.style.display = 'none';
-    poolUploadBtn.style.display = 'none';
-  }
-}
-
-/**
- * 上传有效 Token 至 Pool
+ * 手动上传有效 Token 至 Kirors
  */
 async function uploadToPool() {
-  if (!poolApiKey || !poolUser) {
-    alert('请先连接 Token Pool');
+  if (!poolConfig.apiUrl || !poolConfig.apiKey) {
+    alert('请先配置 Kirors API');
     return;
   }
 
@@ -922,60 +952,36 @@ async function uploadToPool() {
       return;
     }
 
-    if (!confirm(`确定上传 ${validRecords.length} 个有效 Token 至 Pool？`)) {
+    if (!confirm(`确定上传 ${validRecords.length} 个有效 Token 至 Kirors？`)) {
       return;
     }
 
     poolUploadBtn.disabled = true;
     poolUploadBtn.textContent = '上传中...';
 
-    // 准备上传数据
-    const tokens = validRecords.map(r => ({
-      email: r.email,
-      clientId: r.token.clientId,
-      clientSecret: r.token.clientSecret,
-      accessToken: r.token.accessToken,
-      refreshToken: r.token.refreshToken
-    }));
+    let successCount = 0;
+    let failCount = 0;
 
-    // 上传
-    const uploadResponse = await fetch(`${POOL_API_URL}/api/cli/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': poolApiKey
-      },
-      body: JSON.stringify({ tokens })
-    });
-
-    const result = await uploadResponse.json();
-
-    if (!uploadResponse.ok) {
-      throw new Error(result.error || '上传失败');
+    // 逐个上传
+    for (const record of validRecords) {
+      const result = await uploadTokenToKirors(record);
+      if (result.success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+      // 延迟避免限流
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // 更新积分显示
-    if (result.current_points !== undefined) {
-      poolUser.points = result.current_points;
-      poolPoints.textContent = `${poolUser.points} 积分`;
-    }
-
-    // 构建结果消息
-    let message = '上传成功！\n\n';
-    if (result.new_count > 0) message += `新增: ${result.new_count}\n`;
-    if (result.update_count > 0) message += `更新: ${result.update_count}\n`;
-    if (result.skip_count > 0) message += `跳过: ${result.skip_count}\n`;
-    if (result.valid_count > 0) message += `有效: ${result.valid_count}\n`;
-    if (result.points_earned > 0) message += `\n获得 ${result.points_earned} 积分`;
-
-    alert(message);
+    alert(`上传完成！\n\n成功: ${successCount}\n失败: ${failCount}`);
 
   } catch (error) {
     console.error('[Pool] 上传错误:', error);
     alert('上传失败: ' + error.message);
   } finally {
     poolUploadBtn.disabled = false;
-    poolUploadBtn.textContent = '上传';
+    poolUploadBtn.textContent = '上传至 Kirors';
   }
 }
 
@@ -1027,8 +1033,7 @@ async function init() {
   temailSaveBtn.addEventListener('click', saveTEmailConfig);
 
   // Token Pool 事件
-  poolConnectBtn.addEventListener('click', connectToPool);
-  poolDisconnectBtn.addEventListener('click', disconnectFromPool);
+  poolSaveBtn.addEventListener('click', savePoolConfig);
   poolUploadBtn.addEventListener('click', uploadToPool);
 
   // 绑定复制按钮事件

@@ -911,3 +911,28 @@ body {
   font-weight: 600;
   color: #28a745;
 }
+
+/* Kirors 集成样式 */
+.pool-auto-upload {
+  margin-top: 10px;
+  padding: 8px 0;
+}
+
+.pool-auto-upload label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #333;
+}
+
+.pool-auto-upload input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.pool-auto-upload span {
+  user-select: none;
+}
