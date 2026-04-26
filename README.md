@@ -11,6 +11,28 @@
 - ✅ **Token 验证** - 批量验证 Token 状态（有效/过期/封禁）
 - 📊 **历史记录** - 保存注册历史，支持导出 JSON/CSV
 - 🔗 **Kiro IDE 集成** - 一键同步 Token 到 Kiro IDE
+- 🖥️ **Machine ID** - 支持配置 UUID v4 格式的 Machine ID（符合 RFC 4122 标准）
+
+## 📦 导出格式
+
+导出的 JSON 文件包含以下字段：
+
+```json
+[
+  {
+    "clientId": "...",
+    "clientSecret": "...",
+    "accessToken": "...",
+    "refreshToken": "...",
+    "machineId": "a1b2c3d4-e5f6-4789-a012-3456789abcde"
+  }
+]
+```
+
+**Machine ID 说明：**
+- 格式：UUID v4 (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
+- 可手动配置 Windows MachineGuid 或自动生成
+- 详细配置方法见 [MACHINE_ID_GUIDE.md](./MACHINE_ID_GUIDE.md)
 
 ## 📋 前置要求
 

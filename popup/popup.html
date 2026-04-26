@@ -180,6 +180,28 @@
       </div>
     </div>
 
+    <!-- Machine ID 配置 -->
+    <div id="machine-id-section" class="section">
+      <div class="section-header">
+        <h2>🖥️ Machine ID</h2>
+      </div>
+      <div class="pool-config">
+        <div class="mail-input-row">
+          <input type="text" id="machine-id-input" placeholder="留空则自动生成 (UUID v4 格式)" class="mail-input" maxlength="36" pattern="[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}">
+          <button id="machine-id-save-btn" class="btn-small">保存</button>
+        </div>
+        <div class="mail-input-row">
+          <button id="machine-id-auto-btn" class="btn-small" style="width: 100%;">自动生成</button>
+        </div>
+        <p class="mail-hint" style="font-size: 11px; line-height: 1.4;">
+          格式: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx (UUID v4)<br>
+          Windows获取真实MachineGuid：<br>
+          <code style="background: #f0f0f0; padding: 2px 4px; border-radius: 3px; font-size: 10px;">reg query HKLM\SOFTWARE\Microsoft\Cryptography /v MachineGuid</code>
+        </p>
+        <p class="mail-status" id="machine-id-status"></p>
+      </div>
+    </div>
+
     <!-- 底部信息 -->
     <footer class="footer">
       <p>无痕模式需在扩展设置中启用</p>
