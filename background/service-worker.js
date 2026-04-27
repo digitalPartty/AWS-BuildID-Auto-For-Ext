@@ -460,6 +460,9 @@ async function saveToHistory(session, success) {
     };
   }
 
+  // 为每个账号生成专属的 Machine ID (UUID v4 格式)
+  const machineId = crypto.randomUUID().toLowerCase();
+
   const record = {
     id: Date.now() + Math.random(),
     time: new Date().toLocaleString(),
@@ -470,7 +473,8 @@ async function saveToHistory(session, success) {
     success: success,
     error: success ? null : session.error,
     token: tokenInfo,
-    tokenStatus: success ? 'unknown' : null // unknown, valid, invalid, suspended
+    tokenStatus: success ? 'unknown' : null, // unknown, valid, invalid, suspended
+    machineId: machineId // 每个账号专属的 Machine ID
   };
 
   registrationHistory.unshift(record);

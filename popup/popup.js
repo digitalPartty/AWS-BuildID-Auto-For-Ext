@@ -57,12 +57,6 @@ const poolUploadBtn = document.getElementById('pool-upload-btn');
 const poolStatus = document.getElementById('pool-status');
 const poolAutoUploadCheckbox = document.getElementById('pool-auto-upload');
 
-// Machine ID 元素
-const machineIdInput = document.getElementById('machine-id-input');
-const machineIdSaveBtn = document.getElementById('machine-id-save-btn');
-const machineIdAutoBtn = document.getElementById('machine-id-auto-btn');
-const machineIdStatus = document.getElementById('machine-id-status');
-
 // DuckDuckGo + TEmail 配置
 let mailConfig = {
   type: 'duckduckgo', // 固定为 duckduckgo
@@ -82,11 +76,6 @@ let poolConfig = {
   apiUrl: 'https://chairs.zeabur.app/api/admin/credentials',
   apiKey: '',
   autoUpload: false
-};
-
-// Machine ID 配置
-let machineIdConfig = {
-  machineId: '' // 留空则自动生成
 };
 
 /**
@@ -528,17 +517,7 @@ function validateMachineId(machineId) {
 }
 
 /**
- * 获取当前使用的 Machine ID（优先使用配置的，否则自动生成）
- */
-async function getCurrentMachineId() {
-  if (machineIdConfig.machineId) {
-    return machineIdConfig.machineId;
-  }
-  return generateMachineId();
-}
-
-/**
- * 导出历史 (JSON) - 只导出有效的 Token
+ * 导出历史 (JSON) - 只导出有效的 Token，每个账号使用自己的 Machine ID
  */
 async function exportHistory() {
   try {
@@ -566,16 +545,13 @@ async function exportHistory() {
       return;
     }
 
-    // 获取机器码
-    const machineId = await getCurrentMachineId();
-
-    // 生成 JSON 格式（添加 machineId 字段）
+    // 生成 JSON 格式（每个账号使用自己的 machineId）
     const jsonData = validRecords.map(r => ({
       clientId: r.token?.clientId || '',
       clientSecret: r.token?.clientSecret || '',
       accessToken: r.token?.accessToken || '',
       refreshToken: r.token?.refreshToken || '',
-      machineId: machineId
+      machineId: r.machineId || '' // 使用账号专属的 Machine ID
     }));
 
     const jsonStr = JSON.stringify(jsonData, null, 2);
@@ -592,9 +568,9 @@ async function exportHistory() {
     // 提示导出数量
     const totalSuccess = history.filter(r => r.success && r.token).length;
     if (validRecords.length < totalSuccess) {
-      alert(`已导出 ${validRecords.length} 个有效账号（共 ${totalSuccess} 个成功注册，${totalSuccess - validRecords.length} 个被过滤）\nMachine ID: ${machineId}`);
+      alert(`已导出 ${validRecords.length} 个有效账号（共 ${totalSuccess} 个成功注册，${totalSuccess - validRecords.length} 个被过滤）\n每个账号都有专属的 Machine ID`);
     } else {
-      alert(`已导出 ${validRecords.length} 个有效账号\nMachine ID: ${machineId}`);
+      alert(`已导出 ${validRecords.length} 个有效账号\n每个账号都有专属的 Machine ID`);
     }
 
   } catch (error) {
@@ -879,83 +855,6 @@ async function loadPoolConfig() {
   }
 }
 
-// ==================== Machine ID 功能 ====================
-
-/**
- * 加载 Machine ID 配置
- */
-async function loadMachineIdConfig() {
-  try {
-    const result = await chrome.storage.local.get(['machineId']);
-    if (result.machineId) {
-      machineIdConfig.machineId = result.machineId;
-      machineIdInput.value = result.machineId;
-      updateMachineIdStatus();
-    } else {
-      // 如果没有配置，显示自动生成的
-      const autoId = generateMachineId();
-      machineIdStatus.textContent = `当前使用自动生成: ${autoId}`;
-      machineIdStatus.style.color = '#888';
-    }
-  } catch (error) {
-    console.error('[MachineId] 加载配置错误:', error);
-  }
-}
-
-/**
- * 保存 Machine ID 配置
- */
-async function saveMachineIdConfig() {
-  const machineId = machineIdInput.value.trim().toLowerCase();
-
-  // 验证格式（UUID v4）
-  if (machineId && !validateMachineId(machineId)) {
-    machineIdStatus.textContent = '❌ 格式错误：需要符合 UUID v4 格式 (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)';
-    machineIdStatus.style.color = '#f5222d';
-    return;
-  }
-
-  try {
-    machineIdConfig.machineId = machineId;
-    await chrome.storage.local.set({ machineId: machineId });
-    updateMachineIdStatus();
-  } catch (error) {
-    console.error('[MachineId] 保存配置错误:', error);
-    machineIdStatus.textContent = '保存失败: ' + error.message;
-    machineIdStatus.style.color = '#f5222d';
-  }
-}
-
-/**
- * 自动生成 Machine ID
- */
-async function autoGenerateMachineId() {
-  try {
-    const machineId = generateMachineId();
-    machineIdInput.value = machineId;
-    machineIdConfig.machineId = machineId;
-    await chrome.storage.local.set({ machineId: machineId });
-    updateMachineIdStatus();
-  } catch (error) {
-    console.error('[MachineId] 自动生成错误:', error);
-    machineIdStatus.textContent = '生成失败: ' + error.message;
-    machineIdStatus.style.color = '#f5222d';
-  }
-}
-
-/**
- * 更新 Machine ID 状态显示
- */
-function updateMachineIdStatus() {
-  if (machineIdConfig.machineId) {
-    machineIdStatus.textContent = `✓ 已配置: ${machineIdConfig.machineId}`;
-    machineIdStatus.style.color = '#52c41a';
-  } else {
-    machineIdStatus.textContent = '未配置，将使用自动生成';
-    machineIdStatus.style.color = '#888';
-  }
-}
-
 /**
  * 保存 Token Pool 配置
  */
@@ -1130,9 +1029,6 @@ async function init() {
   // 加载 Token Pool 配置
   await loadPoolConfig();
 
-  // 加载 Machine ID 配置
-  await loadMachineIdConfig();
-
   // 监听状态更新
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'STATE_UPDATE') {
@@ -1164,14 +1060,7 @@ async function init() {
   poolSaveBtn.addEventListener('click', savePoolConfig);
   poolUploadBtn.addEventListener('click', uploadToPool);
 
-  // Machine ID 事件
-  machineIdSaveBtn.addEventListener('click', saveMachineIdConfig);
-  machineIdAutoBtn.addEventListener('click', autoGenerateMachineId);
-  machineIdInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      saveMachineIdConfig();
-    }
-  });
+
 
   // 绑定复制按钮事件
   document.querySelectorAll('.copy-btn').forEach(btn => {
