@@ -31,5 +31,8 @@ kiro-token-pool/
 vscode-extension/
 .kiro/
 
+# Kiro IDE 配置文件
+kiro_models.json
+
 # CI/CD
 .gitea/

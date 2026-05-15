@@ -14,8 +14,8 @@ let mailConfig = {
     token: ''
   },
   duckduckgoTemail: {
-    temailBaseUrl: 'https://email.chaijz.top',
-    temailEmail: 'dkdkgo@chaijz.top',
+    temailBaseUrl: '',
+    temailEmail: '',
     temailJwt: '',
     temailAdminPassword: ''
   }

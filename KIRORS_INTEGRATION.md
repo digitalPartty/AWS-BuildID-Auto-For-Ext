@@ -14,7 +14,7 @@
 - 需要连接验证
 
 **新配置：**
-- API 地址（可配置，默认：`https://chairs.zeabur.app/api/admin/credentials`）
+- API 地址（用户自行配置）
 - Token（认证令牌）
 - 自动上传开关（注册成功后自动上传）
 
@@ -22,7 +22,7 @@
 
 **请求方法：** POST
 
-**请求地址：** 可配置（默认 `https://chairs.zeabur.app/api/admin/credentials`）
+**请求地址：** 用户自行配置（如 `https://your-server.com/api/admin/credentials`）
 
 **请求头：**
 ```

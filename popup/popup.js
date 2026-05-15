@@ -64,8 +64,8 @@ let mailConfig = {
     token: ''
   },
   duckduckgoTemail: {
-    temailBaseUrl: 'https://email.chaijz.top',
-    temailEmail: 'dkdkgo@chaijz.top',
+    temailBaseUrl: '',
+    temailEmail: '',
     temailJwt: '',
     temailAdminPassword: ''
   }
@@ -73,7 +73,7 @@ let mailConfig = {
 
 // Token Pool 配置
 let poolConfig = {
-  apiUrl: 'https://chairs.zeabur.app/api/admin/credentials',
+  apiUrl: '',
   apiKey: '',
   autoUpload: false
 };

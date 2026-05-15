@@ -88,8 +88,8 @@ cd aws-auto-registration
 1. 点击扩展图标打开 Popup
 2. 配置 DuckDuckGo Token
 3. 配置 TEmail 自动验证码：
-   - 服务器地址：`https://email.chaijz.top`（或你的 TEmail 地址）
-   - 邮箱地址：`dkdkgo@chaijz.top`（或你的 TEmail 邮箱）
+   - 服务器地址：你的 TEmail 实例地址（如 `https://your-temail.example.com`）
+   - 邮箱地址：你的 TEmail 邮箱（如 `user@your-domain.com`）
    - JWT Token 或 Admin 密码
 4. 点击"保存"
 
